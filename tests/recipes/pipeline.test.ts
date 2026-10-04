@@ -19,6 +19,8 @@ describe("pipeline integration", () => {
     expect(a.candidates.map((item) => item.id)).toEqual(b.candidates.map((item) => item.id));
     expect(a.candidates.length).toBeGreaterThan(5);
     expect(a.report.validStudentCandidates).toBeGreaterThan(0);
+    expect(a.report.scannedTotal).toBeGreaterThanOrEqual(a.report.scanned);
+    expect(a.report.sampledGathered).toBeGreaterThan(0);
   });
 
   it("deduplicates near-identical egg fried rice variants at the same level", () => {

@@ -104,7 +104,14 @@ export interface InspectReport {
 
 export interface PipelineReport {
   inputPath: string;
+  /** Rows kept in the working sample after streaming selection. */
   scanned: number;
+  /** Total CSV rows seen while streaming (may be >> scanned). */
+  scannedTotal: number;
+  gatheredSeen: number;
+  otherSeen: number;
+  sampledGathered: number;
+  sampledOther: number;
   afterBasicValidity: number;
   afterStudentSuitability: number;
   afterNormalization: number;

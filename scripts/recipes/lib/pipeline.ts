@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PIPELINE_DEFAULTS, TRANSFORMATION_VERSION } from "./config";
 import { maybeCorruptVariants } from "./corrupt";
-import { loadAllRecipes } from "./csv";
+import { loadAllRecipes, sampleRecipeNlgCsv } from "./csv";
 import { dedupeCandidates } from "./dedupe";
 import { buildInspectReport, formatInspectReport } from "./inspect";
 import { normalizeRecipeIngredients } from "./normalize";
@@ -19,6 +19,7 @@ export interface SamplePipelineOptions {
   inputPath: string;
   limit?: number;
   preferGathered?: boolean;
+  gatheredOnly?: boolean;
   suitabilityThreshold?: number;
   outputDir?: string;
 }
@@ -46,8 +47,14 @@ export async function runSamplePipeline(options: SamplePipelineOptions): Promise
   const limit = options.limit ?? PIPELINE_DEFAULTS.sampleLimit;
   const threshold = options.suitabilityThreshold ?? PIPELINE_DEFAULTS.suitabilityThreshold;
   const preferGathered = options.preferGathered ?? PIPELINE_DEFAULTS.preferGathered;
+  const gatheredOnly = options.gatheredOnly ?? false;
 
-  const rows = await loadAllRecipes(options.inputPath, { limit });
+  const sample = await sampleRecipeNlgCsv(options.inputPath, {
+    limit,
+    preferGathered,
+    gatheredOnly,
+  });
+  const rows = sample.rows;
   const inspect = buildInspectReport(rows);
   const inspectMarkdown = formatInspectReport(inspect);
 
@@ -57,10 +64,6 @@ export async function runSamplePipeline(options: SamplePipelineOptions): Promise
   const corrupted: StudentCandidate[] = [];
 
   for (const row of rows) {
-    if (preferGathered && row.source && /recipes1m/i.test(row.source)) {
-      // Still allow, but prefer Gathered by soft skip when mixed samples are large
-      if (rows.length > 100 && Math.abs(hashId(row.id)) % 3 === 0) continue;
-    }
     if (!passesBasicValidity(row)) continue;
     afterBasicValidity += 1;
 
@@ -92,6 +95,11 @@ export async function runSamplePipeline(options: SamplePipelineOptions): Promise
   const report: PipelineReport = {
     inputPath: options.inputPath,
     scanned: rows.length,
+    scannedTotal: sample.scannedTotal,
+    gatheredSeen: sample.gatheredSeen,
+    otherSeen: sample.otherSeen,
+    sampledGathered: sample.sampledGathered,
+    sampledOther: sample.sampledOther,
     afterBasicValidity,
     afterStudentSuitability,
     afterNormalization,
@@ -132,12 +140,6 @@ export async function runSamplePipeline(options: SamplePipelineOptions): Promise
   };
 }
 
-function hashId(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return h;
-}
-
 export function formatPipelineReport(report: PipelineReport): string {
   return [
     "# StuMe RecipeNLG sample pipeline report",
@@ -145,7 +147,10 @@ export function formatPipelineReport(report: PipelineReport): string {
     `Input: ${report.inputPath}`,
     `Transformation version: ${report.transformationVersion}`,
     "",
-    `RecipeNLG scanned: ${report.scanned}`,
+    `CSV rows streamed: ${report.scannedTotal}`,
+    `Gathered rows seen: ${report.gatheredSeen}`,
+    `Other-source rows seen: ${report.otherSeen}`,
+    `Working sample size: ${report.scanned} (Gathered ${report.sampledGathered}, other ${report.sampledOther})`,
     `after basic validity filtering: ${report.afterBasicValidity}`,
     `after student suitability filtering: ${report.afterStudentSuitability}`,
     `after normalization: ${report.afterNormalization}`,

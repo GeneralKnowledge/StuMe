@@ -76,6 +76,34 @@ export function rowFromFields(fields: string[]): RawRecipeNlgRow | null {
   };
 }
 
+export function isGatheredSource(source: string): boolean {
+  return /^gathered$/i.test(source.trim());
+}
+
+/** Deterministic unit hash in [0, 1). Stable across runs for the same key. */
+export function unitHash(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i += 1) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 2 ** 32;
+}
+
+function pushReservoir(
+  reservoir: RawRecipeNlgRow[],
+  row: RawRecipeNlgRow,
+  seen: number,
+  limit: number,
+): void {
+  if (reservoir.length < limit) {
+    reservoir.push(row);
+    return;
+  }
+  const j = Math.floor(unitHash(`${row.id}:${seen}`) * seen);
+  if (j < limit) reservoir[j] = row;
+}
+
 export async function* iterateRecipeNlgCsv(
   filePath: string,
   options?: { limit?: number; skipHeader?: boolean },
@@ -87,18 +115,23 @@ export async function* iterateRecipeNlgCsv(
   const limit = options?.limit;
   const skipHeader = options?.skipHeader ?? true;
 
-  for await (const line of rl) {
-    if (!line.trim()) continue;
-    if (skipHeader && index === 0 && /^,?(id|title)/i.test(line)) {
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      if (skipHeader && index === 0 && /^,?(id|title)/i.test(line)) {
+        index += 1;
+        continue;
+      }
       index += 1;
-      continue;
+      const row = rowFromFields(parseCsvLine(line));
+      if (!row) continue;
+      yield row;
+      yielded += 1;
+      if (limit !== undefined && yielded >= limit) break;
     }
-    index += 1;
-    const row = rowFromFields(parseCsvLine(line));
-    if (!row) continue;
-    yield row;
-    yielded += 1;
-    if (limit !== undefined && yielded >= limit) break;
+  } finally {
+    rl.close();
+    stream.destroy();
   }
 }
 
@@ -111,4 +144,87 @@ export async function loadAllRecipes(
     rows.push(row);
   }
   return rows;
+}
+
+export interface SampleCsvOptions {
+  /** Max recipes to keep in the working sample (default 5000). */
+  limit?: number;
+  /**
+   * Prefer RecipeNLG `Gathered` rows via streaming reservoir sampling.
+   * If fewer than `limit` Gathered rows exist, fill remaining slots from other sources.
+   */
+  preferGathered?: boolean;
+  /** Only keep Gathered rows (no Recipes1M fill-in). */
+  gatheredOnly?: boolean;
+}
+
+export interface SampleCsvResult {
+  rows: RawRecipeNlgRow[];
+  scannedTotal: number;
+  gatheredSeen: number;
+  otherSeen: number;
+  sampledGathered: number;
+  sampledOther: number;
+}
+
+/**
+ * Stream a RecipeNLG CSV and keep a bounded, deterministic sample.
+ * Designed for multi-million-row `full_dataset.csv` without loading it all into memory.
+ */
+export async function sampleRecipeNlgCsv(
+  filePath: string,
+  options?: SampleCsvOptions,
+): Promise<SampleCsvResult> {
+  const limit = options?.limit ?? 5000;
+  const preferGathered = options?.preferGathered ?? true;
+  const gatheredOnly = options?.gatheredOnly ?? false;
+
+  const gathered: RawRecipeNlgRow[] = [];
+  const others: RawRecipeNlgRow[] = [];
+  let scannedTotal = 0;
+  let gatheredSeen = 0;
+  let otherSeen = 0;
+
+  for await (const row of iterateRecipeNlgCsv(filePath)) {
+    scannedTotal += 1;
+    if (isGatheredSource(row.source)) {
+      gatheredSeen += 1;
+      if (preferGathered || gatheredOnly) {
+        pushReservoir(gathered, row, gatheredSeen, limit);
+      } else {
+        pushReservoir(others, row, scannedTotal, limit);
+      }
+      continue;
+    }
+
+    otherSeen += 1;
+    if (gatheredOnly) continue;
+    if (preferGathered) {
+      // Keep a fill-in reservoir in case Gathered is short.
+      pushReservoir(others, row, otherSeen, limit);
+    } else {
+      pushReservoir(others, row, scannedTotal, limit);
+    }
+  }
+
+  let rows: RawRecipeNlgRow[];
+  if (!preferGathered && !gatheredOnly) {
+    rows = others.slice(0, limit);
+  } else if (gathered.length >= limit || gatheredOnly) {
+    rows = gathered.slice(0, limit);
+  } else {
+    rows = [...gathered, ...others.slice(0, Math.max(0, limit - gathered.length))];
+  }
+
+  const sampledGathered = rows.filter((row) => isGatheredSource(row.source)).length;
+  const sampledOther = rows.length - sampledGathered;
+
+  return {
+    rows,
+    scannedTotal,
+    gatheredSeen,
+    otherSeen,
+    sampledGathered,
+    sampledOther,
+  };
 }
