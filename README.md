@@ -227,13 +227,14 @@ Pipeline outputs land in `data/generated/student-candidates/` (gitignored by def
 Curated corpus snapshots:
 
 - `data/generated/student-candidates/valid-5k/` — earlier synthetic dry-run (467 valid)
-- `data/generated/student-candidates/refined/` — **211 refined ReciFine recipes** promoted into the app DB (`generationSource: corpus`)
+- `data/generated/student-candidates/refined/` — **5224 refined ReciFine recipes** (100k Gathered pull) promoted into the app DB (`generationSource: corpus`)
 
 ```bash
-# Refine noisy pipeline output → tight import set
-npm run recipes:refine -- --input data/generated/student-candidates/sample/candidates.json --limit 250
+# Bulk expand (import → sample → refine uncapped → optional seed)
+npm run recipes:expand -- --limit 100000 --ingest
 
-# Insert into SQLite (also happens automatically during db:seed when refined/ exists)
+# Or step-by-step
+npm run recipes:refine -- --input data/generated/student-candidates/sample/candidates.json --limit 0 --no-struggle-caps
 npm run recipes:ingest
 ```
 

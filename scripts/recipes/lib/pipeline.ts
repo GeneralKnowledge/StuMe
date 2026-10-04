@@ -124,9 +124,11 @@ export async function runSamplePipeline(options: SamplePipelineOptions): Promise
     await writeFile(path.join(options.outputDir, "inspect.md"), inspectMarkdown, "utf8");
     await writeFile(path.join(options.outputDir, "report.md"), reportMarkdown, "utf8");
     await writeFile(path.join(options.outputDir, "examples.md"), examplesMarkdown, "utf8");
+    // Pretty-print only for small corpora — large dumps are for refine, not reading.
+    const pretty = deduped.length <= 2000;
     await writeFile(
       path.join(options.outputDir, "candidates.json"),
-      JSON.stringify(deduped, null, 2),
+      pretty ? `${JSON.stringify(deduped, null, 2)}\n` : `${JSON.stringify(deduped)}\n`,
       "utf8",
     );
   }

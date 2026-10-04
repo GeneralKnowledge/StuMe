@@ -1,20 +1,18 @@
 # Refined student corpus
 
-Tight subset promoted from the ReciFine 5k sample pipeline.
+Promoted from a **100k Gathered** ReciFine pull (not the official RecipeNLG download).
 
-## Why not 8,874?
-
-The sampler emits up to **3 level variants** (practical / student / struggle) per source recipe.
-5k Gathered rows → ~9k candidates after light dedupe. Most are not import-ready:
+## Funnel
 
 | Stage | Count |
 | --- | ---: |
-| Pipeline candidates | 9141 |
-| Fully graph-represented | 2148 |
-| Quality gates (base meal, ≤8 ingredients, ≤25 min, score) | 1259 |
-| One family across levels | 1243 |
-| One per source recipe | 1114 |
-| Signature dedupe + struggle caps + limit 250 | **211** |
+| ReciFine Gathered imported | 100000 |
+| Pipeline candidates (multi-level variants) | 154270 |
+| Fully graph-represented | 22515 |
+| Quality gates | 11964 |
+| One family across levels | 11481 |
+| One per source recipe | 9740 |
+| Signature / seed dedupe (uncapped) | **5224** |
 
 ## Files
 
@@ -24,10 +22,12 @@ The sampler emits up to **3 level variants** (practical / student / struggle) pe
 ## Load into StuMe
 
 ```bash
-# After seed (or as part of seed if this folder is present)
 npm run db:seed
-# or incrementally:
-npm run recipes:ingest -- --input data/generated/student-candidates/refined/candidates.json
+# or:
+npm run recipes:ingest
+
+# Re-expand later:
+npm run recipes:expand -- --limit 100000 --ingest
 ```
 
-`generationSource` for these rows is `corpus`.
+`generationSource` for these rows is `corpus`. Prune later as needed.

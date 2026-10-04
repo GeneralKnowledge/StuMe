@@ -27,6 +27,7 @@
     "recipes:sample": "tsx scripts/recipes/sample.ts",
     "recipes:refine": "tsx scripts/recipes/refine_candidates.ts",
     "recipes:ingest": "tsx scripts/recipes/ingest_candidates.ts",
+    "recipes:expand": "tsx scripts/recipes/expand_corpus.ts",
     "recipes:report": "tsx scripts/recipes/report.ts"
   },
   "dependencies": {

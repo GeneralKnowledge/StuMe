@@ -1,26 +1,29 @@
 {
-  "count": 211,
+  "count": 5224,
   "sourceCandidates": "data/generated/student-candidates/sample/candidates.json",
-  "filter": "fully_represented + quality + one family/source + seed dedupe + struggle caps",
+  "filter": "fully_represented + quality + one family/source + seed/signature dedupe (no struggle caps)",
+  "limit": 0,
+  "minScore": 20,
+  "noStruggleCaps": true,
   "report": {
-    "input": 9141,
-    "afterFullyRepresented": 2148,
-    "afterQuality": 1259,
-    "afterFamilyDedupe": 1243,
-    "afterSourceDedupe": 1114,
-    "afterSeedDedupe": 745,
-    "afterStruggleCaps": 211,
-    "kept": 211,
+    "input": 154270,
+    "afterFullyRepresented": 22515,
+    "afterQuality": 11964,
+    "afterFamilyDedupe": 11481,
+    "afterSourceDedupe": 9740,
+    "afterSeedDedupe": 5224,
+    "afterStruggleCaps": 5224,
+    "kept": 5224,
     "byStruggle": {
-      "1": 90,
-      "2": 55,
-      "3": 54,
-      "4": 12
+      "1": 3533,
+      "2": 849,
+      "3": 730,
+      "4": 112
     },
     "byLevel": {
-      "student": 46,
-      "practical": 37,
-      "struggle": 128
+      "student": 851,
+      "practical": 662,
+      "struggle": 3711
     }
   }
 }
