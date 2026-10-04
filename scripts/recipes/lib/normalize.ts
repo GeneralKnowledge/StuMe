@@ -5,8 +5,13 @@ function stripQuantity(text: string): string {
   return text
     .toLowerCase()
     .replace(/[()]/g, " ")
-    .replace(/\b\d+([./]\d+)?\s*(cups?|cup|c\.|tbsp\.?|tsp\.?|tablespoons?|teaspoons?|oz\.?|ounces?|lbs?\.?|pounds?|g|kg|ml|l|cloves?|cans?|packets?|slices?|pieces?)?\b/gi, " ")
-    .replace(/\b(large|small|medium|fresh|frozen|canned|tinned|chopped|diced|minced|sliced|shredded|grated|optional|to taste)\b/gi, " ")
+    // RecipeNLG often uses bare "c" / "c." for cups — strip with or without a leading number.
+    .replace(
+      /\b\d+([./]\d+)?\s*(cups?|cup|c\.?|tbsp\.?|tsp\.?|tablespoons?|teaspoons?|oz\.?|ounces?|lbs?\.?|pounds?|g|kg|ml|l|cloves?|cans?|packets?|slices?|pieces?)?\b/gi,
+      " ",
+    )
+    .replace(/\b(c|c\.|cups?|cup)\b/gi, " ")
+    .replace(/\b(large|small|medium|fresh|frozen|canned|tinned|chopped|diced|minced|sliced|shredded|grated|optional|to taste|firmly packed|packed)\b/gi, " ")
     .replace(/[^a-z0-9\s-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -28,6 +33,22 @@ const ALIAS_INDEX = buildAliasIndex(INGREDIENT_META);
 export function normalizeIngredientText(originalText: string): NormalizedIngredient {
   const lowered = originalText.toLowerCase();
   const notes: string[] = [];
+  const cleanedEarly = stripQuantity(originalText);
+
+  // Water is assumed available — never block graph representation.
+  const isWaterOnly =
+    cleanedEarly === "water" ||
+    /^(cold|hot|warm|boiling|iced)?\s*water$/.test(cleanedEarly) ||
+    /^\s*(water|cold water|hot water|warm water|boiling water)\s*$/i.test(lowered.trim());
+  if (isWaterOnly) {
+    return {
+      originalText,
+      normalizedName: "water",
+      stumeSlug: null,
+      confidence: 1,
+      notes: ["ignored always-available water"],
+    };
+  }
 
   // Prefer tinned/canned tomato before generic tomato (stripQuantity removes "canned"/"diced").
   if (/\b(canned|tinned|chopped|diced|crushed)\b.*\btomatoes?\b|\btomatoes?\b.*\b(canned|tinned)\b/.test(lowered)) {
@@ -40,7 +61,7 @@ export function normalizeIngredientText(originalText: string): NormalizedIngredi
     };
   }
 
-  const cleaned = stripQuantity(originalText);
+  const cleaned = cleanedEarly;
 
   if (!cleaned) {
     return {
@@ -89,9 +110,10 @@ export function normalizeIngredientText(originalText: string): NormalizedIngredi
 export function normalizeRecipeIngredients(row: RawRecipeNlgRow): NormalizedIngredient[] {
   const fromLines = row.ingredients.map(normalizeIngredientText);
   // Prefer NER tokens when line mapping fails hard
+  let merged = fromLines;
   if (row.ner.length > 0) {
     const nerMapped = row.ner.map((token) => normalizeIngredientText(token));
-    const merged = [...fromLines];
+    merged = [...fromLines];
     for (const nerItem of nerMapped) {
       if (!nerItem.stumeSlug && !nerItem.normalizedName) continue;
       const exists = merged.some(
@@ -103,9 +125,10 @@ export function normalizeRecipeIngredients(row: RawRecipeNlgRow): NormalizedIngr
         merged.push({ ...nerItem, notes: [...nerItem.notes, "from NER"] });
       }
     }
-    return merged.filter((item) => item.normalizedName);
   }
-  return fromLines.filter((item) => item.normalizedName);
+  return merged.filter(
+    (item) => item.normalizedName && item.normalizedName !== "water",
+  );
 }
 
 export function lookupMeta(conceptOrText: string): IngredientMeta | undefined {

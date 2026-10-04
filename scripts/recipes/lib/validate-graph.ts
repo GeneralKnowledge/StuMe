@@ -37,7 +37,9 @@ export function validateAgainstStumeGraph(candidate: StudentCandidate): StudentC
       slugs.includes("rice") ||
       slugs.includes("bread") ||
       slugs.includes("instant-noodles") ||
-      slugs.includes("frozen-chips");
+      slugs.includes("frozen-chips") ||
+      slugs.includes("mince") ||
+      slugs.includes("lentils");
     if (!hasCookedPathHint && slugs.length >= 2) {
       // Still fully represented ingredient-wise; leave as fully_represented.
     }

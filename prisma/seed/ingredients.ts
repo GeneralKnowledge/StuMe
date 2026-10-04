@@ -27,6 +27,10 @@ export const INGREDIENTS: IngredientSeed[] = [
   { slug: "frozen-chips", name: "Frozen chips", category: "frozen", costCategory: "cheap", shelfLifeDays: 180, defaultStorage: "freezer", versatility: 0.75, wasteRisk: 0.05, tags: ["carb", "convenience", "frozen"], isEssential: true },
   { slug: "oats", name: "Oats", category: "staples", costCategory: "very_cheap", shelfLifeDays: 365, defaultStorage: "cupboard", versatility: 0.65, wasteRisk: 0.05, tags: ["carb", "breakfast"] },
   { slug: "flour", name: "Flour", category: "staples", costCategory: "very_cheap", shelfLifeDays: 365, defaultStorage: "cupboard", versatility: 0.55, wasteRisk: 0.05, tags: ["baking"] },
+  { slug: "sugar", name: "Sugar", category: "staples", costCategory: "very_cheap", shelfLifeDays: 9999, defaultStorage: "cupboard", versatility: 0.55, wasteRisk: 0.02, tags: ["baking", "sweet"] },
+  { slug: "brown-sugar", name: "Brown sugar", category: "staples", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.4, wasteRisk: 0.05, tags: ["baking", "sweet"] },
+  { slug: "baking-powder", name: "Baking powder", category: "staples", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.35, wasteRisk: 0.05, tags: ["baking"] },
+  { slug: "baking-soda", name: "Baking soda", category: "staples", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.3, wasteRisk: 0.05, tags: ["baking"] },
 
   // Eggs and dairy
   { slug: "eggs", name: "Eggs", category: "dairy", costCategory: "cheap", shelfLifeDays: 21, defaultStorage: "fridge", versatility: 0.98, wasteRisk: 0.2, tags: ["protein", "staple"], isEssential: true },
@@ -49,6 +53,7 @@ export const INGREDIENTS: IngredientSeed[] = [
   { slug: "frozen-mixed-vegetables", name: "Frozen mixed vegetables", category: "frozen", costCategory: "cheap", shelfLifeDays: 180, defaultStorage: "freezer", versatility: 0.88, wasteRisk: 0.05, tags: ["veg", "frozen", "convenience"], isEssential: true },
   { slug: "sweetcorn", name: "Sweetcorn (tinned)", category: "tinned", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.65, wasteRisk: 0.05, tags: ["veg", "tinned"] },
   { slug: "spinach", name: "Spinach", category: "vegetables", costCategory: "cheap", shelfLifeDays: 4, defaultStorage: "fridge", versatility: 0.6, wasteRisk: 0.6, tags: ["veg"] },
+  { slug: "celery", name: "Celery", category: "vegetables", costCategory: "cheap", shelfLifeDays: 10, defaultStorage: "fridge", versatility: 0.55, wasteRisk: 0.4, tags: ["veg", "aromatic"] },
 
   // Protein / easy additions
   { slug: "sausages", name: "Sausages", category: "protein", costCategory: "cheap", shelfLifeDays: 5, defaultStorage: "fridge", versatility: 0.7, wasteRisk: 0.4, tags: ["protein", "meat"] },
@@ -56,10 +61,12 @@ export const INGREDIENTS: IngredientSeed[] = [
   { slug: "ham", name: "Ham", category: "protein", costCategory: "cheap", shelfLifeDays: 5, defaultStorage: "fridge", versatility: 0.65, wasteRisk: 0.45, tags: ["protein", "meat"] },
   { slug: "cooked-chicken", name: "Cooked chicken", category: "protein", costCategory: "moderate", shelfLifeDays: 3, defaultStorage: "fridge", versatility: 0.85, wasteRisk: 0.5, tags: ["protein", "meat", "convenience"] },
   { slug: "chicken-breast", name: "Chicken breast", category: "protein", costCategory: "moderate", shelfLifeDays: 3, defaultStorage: "fridge", versatility: 0.8, wasteRisk: 0.5, tags: ["protein", "meat"] },
+  { slug: "mince", name: "Mince / ground beef", category: "protein", costCategory: "cheap", shelfLifeDays: 2, defaultStorage: "fridge", versatility: 0.85, wasteRisk: 0.55, tags: ["protein", "meat"], isEssential: true },
   { slug: "tuna", name: "Tuna (tinned)", category: "tinned", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.8, wasteRisk: 0.05, tags: ["protein", "tinned"] },
   { slug: "baked-beans", name: "Baked beans", category: "tinned", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.85, wasteRisk: 0.05, tags: ["protein", "tinned", "veggie"], isEssential: true },
   { slug: "chickpeas", name: "Chickpeas", category: "tinned", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.8, wasteRisk: 0.05, tags: ["protein", "tinned", "veggie"] },
   { slug: "kidney-beans", name: "Kidney beans", category: "tinned", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.7, wasteRisk: 0.05, tags: ["protein", "tinned", "veggie"] },
+  { slug: "lentils", name: "Lentils", category: "staples", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.75, wasteRisk: 0.05, tags: ["protein", "veggie"] },
 
   // Tinned / jarred
   { slug: "chopped-tomatoes", name: "Chopped tomatoes", category: "tinned", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.9, wasteRisk: 0.05, tags: ["tinned", "sauce-base"], isEssential: true },
@@ -78,6 +85,12 @@ export const INGREDIENTS: IngredientSeed[] = [
   { slug: "bbq-sauce", name: "BBQ sauce", category: "flavour", costCategory: "cheap", shelfLifeDays: 365, defaultStorage: "fridge", versatility: 0.5, wasteRisk: 0.1, tags: ["sauce"] },
   { slug: "curry-powder", name: "Curry powder", category: "flavour", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.75, wasteRisk: 0.02, tags: ["spice"] },
   { slug: "paprika", name: "Paprika", category: "flavour", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.55, wasteRisk: 0.02, tags: ["spice"] },
+  { slug: "chili-powder", name: "Chili powder", category: "flavour", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.55, wasteRisk: 0.02, tags: ["spice"] },
+  { slug: "cinnamon", name: "Cinnamon", category: "flavour", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.4, wasteRisk: 0.02, tags: ["spice", "baking"] },
+  { slug: "vanilla", name: "Vanilla", category: "flavour", costCategory: "moderate", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.35, wasteRisk: 0.05, tags: ["baking", "sweet"] },
+  { slug: "vinegar", name: "Vinegar", category: "flavour", costCategory: "very_cheap", shelfLifeDays: 9999, defaultStorage: "cupboard", versatility: 0.5, wasteRisk: 0.02, tags: ["sauce", "seasoning"] },
+  { slug: "lemon-juice", name: "Lemon juice", category: "flavour", costCategory: "cheap", shelfLifeDays: 180, defaultStorage: "fridge", versatility: 0.55, wasteRisk: 0.15, tags: ["sauce", "seasoning"] },
+  { slug: "dried-herbs", name: "Dried herbs", category: "flavour", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.65, wasteRisk: 0.02, tags: ["spice", "seasoning"] },
   { slug: "garlic-powder", name: "Garlic powder", category: "flavour", costCategory: "cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.6, wasteRisk: 0.02, tags: ["spice"] },
   { slug: "stock-cubes", name: "Stock cubes", category: "flavour", costCategory: "very_cheap", shelfLifeDays: 730, defaultStorage: "cupboard", versatility: 0.8, wasteRisk: 0.02, tags: ["seasoning"], isEssential: true },
   { slug: "salt", name: "Salt", category: "flavour", costCategory: "very_cheap", shelfLifeDays: 9999, defaultStorage: "cupboard", versatility: 1, wasteRisk: 0, tags: ["seasoning", "staple"], isEssential: true },

@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { INGREDIENTS } from "../../../prisma/seed/ingredients";
 import { TRANSFORMATIONS } from "../../../prisma/seed/transformations";
 import { RECIPES } from "../../../prisma/seed/recipes";
@@ -5,7 +7,34 @@ import type { FoodGraph } from "@/lib/graph/engine";
 import type { GraphComponent, GraphIngredient, GraphRecipe } from "@/lib/types";
 import { buildRecipeSignature } from "@/lib/validation/signature";
 
-export function buildGraphFromSeed(): FoodGraph {
+const REFINED_CORPUS_PATH = path.join(
+  process.cwd(),
+  "data",
+  "generated",
+  "student-candidates",
+  "refined",
+  "candidates.json",
+);
+
+interface RefinedCorpusRecipe {
+  title: string;
+  description: string;
+  steps: string[];
+  timeMinutes: number;
+  difficulty: GraphRecipe["difficulty"];
+  equipment: string[];
+  estimatedCost: GraphRecipe["estimatedCost"];
+  tags: string[];
+  graphPath: string[];
+  ingredients: Array<{ slug: string; quantity?: string; optional?: boolean }>;
+  componentSlugs: string[];
+  signature?: string;
+}
+
+export function buildGraphFromSeed(options?: { includeCorpus?: boolean }): FoodGraph {
+  // Corpus is opt-in: unit/e2e tests stay on the curated seed graph.
+  // Demo, DB seed, and corpus UX tests pass includeCorpus: true.
+  const includeCorpus = options?.includeCorpus ?? false;
   const ingredients = new Map<string, GraphIngredient>();
   for (const item of INGREDIENTS) {
     ingredients.set(item.slug, {
@@ -91,6 +120,60 @@ export function buildGraphFromSeed(): FoodGraph {
       componentSlugs: item.componentSlugs,
     };
   });
+
+  const signatures = new Set(recipes.map((recipe) => recipe.signature));
+
+  if (includeCorpus && existsSync(REFINED_CORPUS_PATH)) {
+    const corpus = JSON.parse(readFileSync(REFINED_CORPUS_PATH, "utf8")) as RefinedCorpusRecipe[];
+    let corpusIndex = 0;
+    for (const item of corpus) {
+      const ingredientsList = item.ingredients
+        .filter((ingredient) => ingredients.has(ingredient.slug))
+        .map((ingredient) => ({
+          ingredientSlug: ingredient.slug,
+          quantity: ingredient.quantity,
+          optional: Boolean(ingredient.optional),
+        }));
+      if (ingredientsList.length < 2) continue;
+
+      const componentSlugs = (item.componentSlugs ?? []).filter((slug) => components.has(slug));
+      const graphPath = (item.graphPath ?? []).filter((slug) =>
+        transformations.some((transform) => transform.slug === slug),
+      );
+      const signature =
+        item.signature ??
+        buildRecipeSignature({
+          title: item.title,
+          ingredients: ingredientsList,
+          graphPath,
+          tags: item.tags,
+          equipment: item.equipment,
+          componentSlugs,
+        });
+      if (signatures.has(signature)) continue;
+      signatures.add(signature);
+      corpusIndex += 1;
+      recipes.push({
+        id: `corpus-${corpusIndex}`,
+        title: item.title,
+        description: item.description,
+        steps: item.steps,
+        timeMinutes: item.timeMinutes,
+        difficulty: item.difficulty,
+        equipment: item.equipment,
+        estimatedCost: item.estimatedCost,
+        tags: item.tags,
+        graphPath,
+        generationSource: "corpus",
+        signature,
+        popularity: 0,
+        useCount: 0,
+        noveltyScore: 1,
+        ingredients: ingredientsList,
+        componentSlugs,
+      });
+    }
+  }
 
   return { ingredients, components, transformations, recipes };
 }

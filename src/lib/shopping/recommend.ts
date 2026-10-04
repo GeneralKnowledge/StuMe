@@ -1,7 +1,6 @@
 import type { FoodGraph } from "@/lib/graph/engine";
 import { createKitchenState, recipeIngredientCoverage } from "@/lib/graph/engine";
-import { rankRecipes } from "@/lib/scoring/score";
-import type { CostCategory, KitchenState, ShoppingUnlock } from "@/lib/types";
+import type { CostCategory, GraphRecipe, KitchenState, ShoppingUnlock } from "@/lib/types";
 
 const COST_BONUS: Record<CostCategory, number> = {
   very_cheap: 12,
@@ -50,6 +49,29 @@ function superFoodScore(input: {
   );
 }
 
+function canMakeFromCoverage(coverage: {
+  missingRequired: string[];
+  availabilityPct: number;
+}): boolean {
+  return coverage.missingRequired.length === 0 && coverage.availabilityPct >= 0.999;
+}
+
+/** Build ingredient → recipe index once so purchase scoring stays linear in corpus size. */
+function indexRecipesByIngredient(recipes: GraphRecipe[]): Map<string, number[]> {
+  const index = new Map<string, number[]>();
+  for (let recipeIndex = 0; recipeIndex < recipes.length; recipeIndex += 1) {
+    const seen = new Set<string>();
+    for (const ingredient of recipes[recipeIndex]!.ingredients) {
+      if (seen.has(ingredient.ingredientSlug)) continue;
+      seen.add(ingredient.ingredientSlug);
+      const list = index.get(ingredient.ingredientSlug);
+      if (list) list.push(recipeIndex);
+      else index.set(ingredient.ingredientSlug, [recipeIndex]);
+    }
+  }
+  return index;
+}
+
 export function recommendPurchases(
   graph: FoodGraph,
   kitchen: KitchenState,
@@ -63,6 +85,9 @@ export function recommendPurchases(
 /**
  * Super foods: cheap/low-effort ingredients that either unlock the most meals
  * from what you already own, or fancy up meals you can already make.
+ *
+ * Future idea: pair unlock recommendations with a “shops near me” helper
+ * (campus supermarket / corner shop proximity) once location UX exists.
  */
 export function recommendSuperFoods(
   graph: FoodGraph,
@@ -75,48 +100,80 @@ export function recommendSuperFoods(
     .slice(0, limit);
 }
 
-function scorePurchaseCandidates(
+/**
+ * Score every unowned ingredient against recipes that actually list it.
+ * Avoids O(ingredients × recipes) full re-ranks — critical at corpus scale.
+ */
+export function scorePurchaseCandidates(
   graph: FoodGraph,
   kitchen: KitchenState,
 ): ShoppingUnlock[] {
   const owned = kitchen.ingredientSlugs;
-  const rankedNow = rankRecipes(graph, kitchen);
-  const currentMakeNow = rankedNow.filter((candidate) => candidate.canMakeNow);
-  const currentMakeNowIds = new Set(currentMakeNow.map((candidate) => candidate.recipe.id));
+
+  const baseline = graph.recipes.map((recipe) => {
+    const coverage = recipeIngredientCoverage(recipe, kitchen);
+    return {
+      recipe,
+      coverage,
+      canMakeNow: canMakeFromCoverage(coverage),
+    };
+  });
+
+  const byIngredient = indexRecipesByIngredient(graph.recipes);
 
   const candidates = [...graph.ingredients.values()].filter(
-    (ingredient) => !owned.has(ingredient.slug) && ingredient.slug !== "salt" && ingredient.slug !== "pepper",
+    (ingredient) =>
+      !owned.has(ingredient.slug) && ingredient.slug !== "salt" && ingredient.slug !== "pepper",
   );
 
   const unlocks: ShoppingUnlock[] = [];
 
   for (const ingredient of candidates) {
+    const recipeIndexes = byIngredient.get(ingredient.slug) ?? [];
+    if (recipeIndexes.length === 0 && !ingredient.isEssential) {
+      continue;
+    }
+
     const expanded = createKitchenState([...owned, ingredient.slug], {
       equipment: [...kitchen.equipment],
       expiringSlugs: [...kitchen.expiringSlugs],
       stapleSlugs: [...kitchen.stapleSlugs],
     });
 
-    const ranked = rankRecipes(graph, expanded);
-    const unlocked = ranked.filter(
-      (candidate) => candidate.canMakeNow && !currentMakeNowIds.has(candidate.recipe.id),
-    );
-    const improved = ranked.filter((candidate) => {
-      if (candidate.canMakeNow) return false;
-      const before = recipeIngredientCoverage(candidate.recipe, kitchen);
-      const after = recipeIngredientCoverage(candidate.recipe, expanded);
-      return after.missingRequired.length < before.missingRequired.length;
-    });
+    const unlockedRecipeTitles: string[] = [];
+    const improvedRecipeTitles: string[] = [];
+    const fanciedUpRecipeTitles: string[] = [];
+    let mealUnlockValue = 0;
+    let mealsImproved = 0;
+    let mealsFanciedUp = 0;
 
-    // Fancy-up: already makeable recipes where this ingredient is a missing optional.
-    const fancied = currentMakeNow.filter((candidate) =>
-      candidate.missingOptional.includes(ingredient.slug),
-    );
+    for (const recipeIndex of recipeIndexes) {
+      const before = baseline[recipeIndex]!;
+      if (before.canMakeNow) {
+        if (before.coverage.missingOptional.includes(ingredient.slug)) {
+          mealsFanciedUp += 1;
+          if (fanciedUpRecipeTitles.length < 4) {
+            fanciedUpRecipeTitles.push(before.recipe.title);
+          }
+        }
+        continue;
+      }
+
+      const after = recipeIngredientCoverage(before.recipe, expanded);
+      if (canMakeFromCoverage(after)) {
+        mealUnlockValue += 1;
+        if (unlockedRecipeTitles.length < 6) {
+          unlockedRecipeTitles.push(before.recipe.title);
+        }
+      } else if (after.missingRequired.length < before.coverage.missingRequired.length) {
+        mealsImproved += 1;
+        if (improvedRecipeTitles.length < 4) {
+          improvedRecipeTitles.push(before.recipe.title);
+        }
+      }
+    }
 
     const lowEffort = lowEffortScore(ingredient);
-    const mealUnlockValue = unlocked.length;
-    const mealsImproved = improved.length;
-    const mealsFanciedUp = fancied.length;
 
     const score =
       mealUnlockValue * 10 +
@@ -144,7 +201,12 @@ function scorePurchaseCandidates(
       (mealUnlockValue >= 2 || mealsFanciedUp >= 2 || (mealUnlockValue >= 1 && mealsFanciedUp >= 1)) &&
       (ingredient.costCategory === "very_cheap" || ingredient.costCategory === "cheap");
 
-    if (mealUnlockValue === 0 && mealsImproved === 0 && mealsFanciedUp === 0 && !ingredient.isEssential) {
+    if (
+      mealUnlockValue === 0 &&
+      mealsImproved === 0 &&
+      mealsFanciedUp === 0 &&
+      !ingredient.isEssential
+    ) {
       continue;
     }
 
@@ -163,9 +225,9 @@ function scorePurchaseCandidates(
       superFoodScore: composite,
       roles,
       isSuperFood,
-      unlockedRecipeTitles: unlocked.slice(0, 6).map((item) => item.recipe.title),
-      improvedRecipeTitles: improved.slice(0, 4).map((item) => item.recipe.title),
-      fanciedUpRecipeTitles: fancied.slice(0, 4).map((item) => item.recipe.title),
+      unlockedRecipeTitles,
+      improvedRecipeTitles,
+      fanciedUpRecipeTitles,
     });
   }
 
@@ -193,7 +255,8 @@ export function topEssentialsBundle(
   kitchen: KitchenState,
   count = 3,
 ): ShoppingUnlock[] {
-  const ranked = recommendPurchases(graph, kitchen, 20);
+  const scoredOnce = scorePurchaseCandidates(graph, kitchen).sort((a, b) => b.score - a.score);
+  const ranked = scoredOnce.slice(0, 20);
   const picked: ShoppingUnlock[] = [];
   const simulated = new Set(kitchen.ingredientSlugs);
 
@@ -205,6 +268,8 @@ export function topEssentialsBundle(
     simulated.add(item.ingredientSlug);
   }
 
+  // Refresh unlock counts after each prior pick without re-scoring the whole catalog each time
+  // beyond one pass per picked item (cheap after the indexed scorer).
   return picked.map((item, index) => {
     const ownedAfterPrevious = createKitchenState(
       [...kitchen.ingredientSlugs, ...picked.slice(0, index).map((p) => p.ingredientSlug)],
@@ -213,7 +278,7 @@ export function topEssentialsBundle(
         expiringSlugs: [...kitchen.expiringSlugs],
       },
     );
-    const [fresh] = recommendPurchases(graph, ownedAfterPrevious, 30).filter(
+    const fresh = scorePurchaseCandidates(graph, ownedAfterPrevious).find(
       (candidate) => candidate.ingredientSlug === item.ingredientSlug,
     );
     return fresh ?? item;
