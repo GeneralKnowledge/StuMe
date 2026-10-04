@@ -17,7 +17,8 @@ data/
   fixtures/               # tiny synthetic RecipeNLG-shaped CSV for tests/dev
   generated/              # pipeline outputs (gitignored by default except .gitkeep)
     student-candidates/
-      valid-5k/           # curated 467 valid candidates from the 5k dry-run (committed)
+      valid-5k/           # earlier synthetic dry-run snapshot (committed)
+      refined/            # promoted ReciFine subset for DB ingest (committed)
 ```
 
 ## Obtaining a recipe corpus (alternatives)
