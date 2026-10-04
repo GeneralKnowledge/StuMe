@@ -38,9 +38,13 @@ prisma/dev.db-journal
 *.db
 *.db-journal
 
-# RecipeNLG raw corpus and generated pipeline outputs
-data/external/recipenlg/**
+# External raw corpora (keep directory placeholders only)
+data/external/recipenlg/*
 !data/external/recipenlg/.gitkeep
+data/external/recifine/*
+!data/external/recifine/.gitkeep
+data/external/foodcom/*
+!data/external/foodcom/.gitkeep
 data/generated/**
 !data/generated/**/.gitkeep
 !data/generated/student-candidates/
