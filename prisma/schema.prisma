@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Ingredient {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  category        String
+  costCategory    String
+  shelfLifeDays   Int
+  defaultStorage  String
+  versatility     Float    @default(0.5)
+  wasteRisk       Float    @default(0.3)
+  tags            String   @default("[]")
+  isEssential     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  transformationInputs TransformationInput[]
+  recipeIngredients    RecipeIngredient[]
+  kitchenItems         KitchenItem[]
+}
+
+model Component {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  tags         String   @default("[]")
+  difficulty   String   @default("easy")
+  timeMinutes  Int      @default(5)
+  equipment    String   @default("[]")
+  createdAt    DateTime @default(now())
+
+  transformationInputs  TransformationInput[]
+  transformationOutputs TransformationOutput[]
+  recipeComponents      RecipeComponent[]
+}
+
+model Transformation {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  method      String
+  timeMinutes Int
+  difficulty  String
+  equipment   String   @default("[]")
+  tags        String   @default("[]")
+  createdAt   DateTime @default(now())
+
+  inputs  TransformationInput[]
+  outputs TransformationOutput[]
+}
+
+model TransformationInput {
+  id               String  @id @default(cuid())
+  transformationId String
+  ingredientId     String?
+  componentId      String?
+  optional         Boolean @default(false)
+  role             String?
+
+  transformation Transformation @relation(fields: [transformationId], references: [id], onDelete: Cascade)
+  ingredient     Ingredient?    @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  component      Component?     @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([transformationId])
+}
+
+model TransformationOutput {
+  id               String @id @default(cuid())
+  transformationId String
+  componentId      String
+
+  transformation Transformation @relation(fields: [transformationId], references: [id], onDelete: Cascade)
+  component      Component      @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([transformationId])
+}
+
+model Recipe {
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  steps            String
+  timeMinutes      Int
+  difficulty       String
+  equipment        String   @default("[]")
+  estimatedCost    String
+  tags             String   @default("[]")
+  graphPath        String   @default("[]")
+  generationSource String
+  signature        String
+  popularity       Int      @default(0)
+  useCount         Int      @default(0)
+  noveltyScore     Float    @default(1.0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ingredients RecipeIngredient[]
+  components  RecipeComponent[]
+
+  @@index([signature])
+  @@index([generationSource])
+}
+
+model RecipeIngredient {
+  id           String  @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     String?
+  optional     Boolean @default(false)
+
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+  @@index([ingredientId])
+}
+
+model RecipeComponent {
+  id          String @id @default(cuid())
+  recipeId    String
+  componentId String
+
+  recipe    Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model Kitchen {
+  id        String   @id @default(cuid())
+  name      String   @default("My Kitchen")
+  equipment String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items KitchenItem[]
+}
+
+model KitchenItem {
+  id           String   @id @default(cuid())
+  kitchenId    String
+  ingredientId String
+  quantity     String?
+  isStaple     Boolean  @default(false)
+  expiringSoon Boolean  @default(false)
+  storage      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  kitchen    Kitchen    @relation(fields: [kitchenId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([kitchenId, ingredientId])
+  @@index([kitchenId])
+}
+
+model RejectedRecipeSignature {
+  id        String   @id @default(cuid())
+  signature String   @unique
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model ScoreConfig {
+  id     String @id @default("default")
+  weights String
+}
