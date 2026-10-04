@@ -4,6 +4,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { isGatheredSource, sampleRecipeNlgCsv, unitHash } from "../../scripts/recipes/lib/csv";
 
+function csvEscape(value: string): string {
+  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
 function writeCsv(rows: Array<[string, string, string]>): string {
   const dir = mkdtempSync(path.join(tmpdir(), "stume-csv-"));
   const file = path.join(dir, "sample.csv");
@@ -12,12 +17,12 @@ function writeCsv(rows: Array<[string, string, string]>): string {
     lines.push(
       [
         id,
-        title,
-        JSON.stringify(["eggs", "rice", "soy sauce", "oil"]),
-        JSON.stringify(["Fry everything."]),
-        `example.com/${id}`,
-        source,
-        JSON.stringify(["eggs", "rice", "soy sauce", "oil"]),
+        csvEscape(title),
+        csvEscape(JSON.stringify(["eggs", "rice", "soy sauce", "oil"])),
+        csvEscape(JSON.stringify(["Fry everything."])),
+        csvEscape(`example.com/${id}`),
+        csvEscape(source),
+        csvEscape(JSON.stringify(["eggs", "rice", "soy sauce", "oil"])),
       ].join(","),
     );
   }
