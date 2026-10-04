@@ -16,6 +16,8 @@ data/
   external/recipenlg/     # place full_dataset.csv here (gitignored content)
   fixtures/               # tiny synthetic RecipeNLG-shaped CSV for tests/dev
   generated/              # pipeline outputs (gitignored by default except .gitkeep)
+    student-candidates/
+      valid-5k/           # curated 467 valid candidates from the 5k dry-run (committed)
 ```
 
 ## Obtaining RecipeNLG
