@@ -11,6 +11,7 @@ import type { PipelineReport, RawRecipeNlgRow, StruggleBand, StudentCandidate, V
 import {
   missingIngredientCoverage,
   potentialShoppingUnlocks,
+  rankCorpusSuperFoods,
   validateAgainstStumeGraph,
 } from "./validate-graph";
 
@@ -86,6 +87,7 @@ export async function runSamplePipeline(options: SamplePipelineOptions): Promise
 
   const topMissing = missingIngredientCoverage(deduped).slice(0, 15);
   const topUnlocks = potentialShoppingUnlocks(deduped, 12);
+  const topSuperFoods = rankCorpusSuperFoods(deduped, 12);
 
   const report: PipelineReport = {
     inputPath: options.inputPath,
@@ -102,6 +104,7 @@ export async function runSamplePipeline(options: SamplePipelineOptions): Promise
     recipesRequiringNewIngredients: byValidation.needs_ingredients,
     topMissingIngredients: topMissing,
     topPotentialShoppingUnlocks: topUnlocks,
+    topSuperFoods,
     transformationVersion: TRANSFORMATION_VERSION,
   };
 
@@ -171,6 +174,12 @@ export function formatPipelineReport(report: PipelineReport): string {
     "Top potential shopping unlocks / expansions:",
     ...report.topPotentialShoppingUnlocks.map(
       (item) => `  - ${item.slug}: ${item.unlockEstimate}`,
+    ),
+    "",
+    "Top super foods (unlock + fancy-up, low effort):",
+    ...report.topSuperFoods.map(
+      (item) =>
+        `  - ${item.slug}: unlock ${item.unlockEstimate}, fancy-up ${item.fancyUpEstimate}, low-effort ${item.lowEffortScore}, score ${item.superFoodScore} [${item.roles.join("+")}]`,
     ),
     "",
   ].join("\n");

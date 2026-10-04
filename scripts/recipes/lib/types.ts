@@ -116,5 +116,13 @@ export interface PipelineReport {
   recipesRequiringNewIngredients: number;
   topMissingIngredients: Array<{ slugOrName: string; recipeCoverage: number }>;
   topPotentialShoppingUnlocks: Array<{ slug: string; unlockEstimate: number }>;
+  topSuperFoods: Array<{
+    slug: string;
+    unlockEstimate: number;
+    fancyUpEstimate: number;
+    lowEffortScore: number;
+    superFoodScore: number;
+    roles: Array<"unlock" | "fancy_up">;
+  }>;
   transformationVersion: string;
 }

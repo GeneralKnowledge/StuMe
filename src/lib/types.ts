@@ -136,12 +136,21 @@ export interface ShoppingUnlock {
   costCategory: CostCategory;
   mealUnlockValue: number;
   mealsImproved: number;
+  /** Recipes you can already make that get better if you add this (optional upgrade). */
+  mealsFanciedUp: number;
   shelfLifeDays: number;
   versatility: number;
   wasteRisk: number;
   score: number;
+  /** Low-effort buy: cheap, long life, versatile, low waste. */
+  lowEffortScore: number;
+  /** Unlock + fancy-up + low-effort composite for “super foods”. */
+  superFoodScore: number;
+  roles: Array<"unlock" | "fancy_up">;
+  isSuperFood: boolean;
   unlockedRecipeTitles: string[];
   improvedRecipeTitles: string[];
+  fanciedUpRecipeTitles: string[];
 }
 
 export interface GenerationConstraints {

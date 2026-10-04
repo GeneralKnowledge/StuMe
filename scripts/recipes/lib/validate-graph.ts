@@ -74,30 +74,130 @@ export function potentialShoppingUnlocks(
   candidates: StudentCandidate[],
   limit = 10,
 ): Array<{ slug: string; unlockEstimate: number }> {
-  const known = getStumeIngredientSlugs();
-  const missingNames = missingIngredientCoverage(candidates)
-    .map((item) => item.slugOrName)
-    .filter((name) => !known.has(name));
+  return rankCorpusSuperFoods(candidates, limit).map((item) => ({
+    slug: item.slug,
+    unlockEstimate: item.unlockEstimate + item.fancyUpEstimate,
+  }));
+}
 
-  // Also consider StuMe essentials not present in a synthetic empty kitchen against fully mapped recipes
-  const unlocks: Array<{ slug: string; unlockEstimate: number }> = [];
+/**
+ * Corpus-level super foods: ingredients that appear in the most student
+ * candidates (coverage unlock) and/or as optional fancy-ups, with a low-effort bias.
+ */
+export function rankCorpusSuperFoods(
+  candidates: StudentCandidate[],
+  limit = 12,
+): Array<{
+  slug: string;
+  unlockEstimate: number;
+  fancyUpEstimate: number;
+  lowEffortScore: number;
+  superFoodScore: number;
+  roles: Array<"unlock" | "fancy_up">;
+}> {
+  const known = getStumeIngredientSlugs();
+  const ingredientMeta = new Map(INGREDIENTS.map((item) => [item.slug, item]));
+  const FANCY_UP_SLUGS = new Set([
+    "cheese",
+    "grated-cheese",
+    "soy-sauce",
+    "hot-sauce",
+    "frozen-peas",
+    "frozen-mixed-vegetables",
+    "garlic",
+    "garlic-powder",
+    "spring-onions",
+    "butter",
+    "chilli flakes",
+  ]);
+
+  const rows: Array<{
+    slug: string;
+    unlockEstimate: number;
+    fancyUpEstimate: number;
+    lowEffortScore: number;
+    superFoodScore: number;
+    roles: Array<"unlock" | "fancy_up">;
+  }> = [];
 
   for (const slug of known) {
+    if (slug === "salt" || slug === "pepper") continue;
     let unlockEstimate = 0;
+    let fancyUpEstimate = 0;
+    let soleMissingUnlocks = 0;
+
     for (const candidate of candidates) {
-      if (candidate.validationStatus === "fully_represented") continue;
-      const missing = new Set(candidate.missingStumeSlugs);
-      if (missing.has(slug) && missing.size === 1) unlockEstimate += 1;
+      if (candidate.validationStatus === "unrepresentable") continue;
+
+      const requiredHit = candidate.ingredients.some(
+        (item) => !item.optional && item.stumeSlug === slug,
+      );
+      const optionalHit = candidate.ingredients.some(
+        (item) => item.optional && item.stumeSlug === slug,
+      );
+
+      if (requiredHit) unlockEstimate += 1;
+      if (optionalHit || (requiredHit && FANCY_UP_SLUGS.has(slug))) {
+        // Count as fancy-up when marked optional, or when it's a classic low-effort upgrade ingredient present in the meal.
+        if (optionalHit || FANCY_UP_SLUGS.has(slug)) fancyUpEstimate += optionalHit ? 1 : 0;
+      }
+      if (FANCY_UP_SLUGS.has(slug) && requiredHit && candidate.validationStatus === "fully_represented") {
+        // Presence of a classic upgrade ingredient in a valid student meal.
+        fancyUpEstimate += 1;
+      }
+
+      if (candidate.validationStatus !== "fully_represented") {
+        const missing = new Set(candidate.missingStumeSlugs);
+        if (missing.has(slug) && missing.size === 1) soleMissingUnlocks += 1;
+      }
     }
-    if (unlockEstimate > 0) unlocks.push({ slug, unlockEstimate });
+
+    // Prefer sole-missing unlocks when available; otherwise use coverage.
+    const effectiveUnlock = Math.max(soleMissingUnlocks * 3, unlockEstimate);
+    const meta = ingredientMeta.get(slug);
+    if (!meta) continue;
+    if (effectiveUnlock === 0 && fancyUpEstimate === 0) continue;
+
+    const lowEffortScore = Number(
+      (
+        (meta.costCategory === "very_cheap" ? 40 : meta.costCategory === "cheap" ? 32 : 12) +
+        Math.min(meta.shelfLifeDays / 90, 1) * 25 +
+        meta.versatility * 25 +
+        (1 - meta.wasteRisk) * 10
+      ).toFixed(2),
+    );
+    if (lowEffortScore < 50 && meta.costCategory !== "very_cheap" && meta.costCategory !== "cheap") {
+      continue;
+    }
+
+    const roles: Array<"unlock" | "fancy_up"> = [];
+    if (effectiveUnlock > 0) roles.push("unlock");
+    if (fancyUpEstimate > 0) roles.push("fancy_up");
+
+    rows.push({
+      slug,
+      unlockEstimate: effectiveUnlock,
+      fancyUpEstimate,
+      lowEffortScore,
+      superFoodScore: Number(
+        (effectiveUnlock * 4 + fancyUpEstimate * 6 + lowEffortScore * 0.4).toFixed(2),
+      ),
+      roles,
+    });
   }
 
-  // Unmapped concepts that appear often are expansion targets, not purchases yet
-  for (const name of missingNames.slice(0, 20)) {
-    const coverage =
-      candidates.filter((candidate) => candidate.missingStumeSlugs.includes(name)).length;
-    unlocks.push({ slug: `NEW:${name}`, unlockEstimate: coverage });
+  for (const item of missingIngredientCoverage(candidates).slice(0, 10)) {
+    if (known.has(item.slugOrName)) continue;
+    // Keep graph-expansion targets visible, but below real StuMe super foods when coverage exists.
+    rows.push({
+      slug: `NEW:${item.slugOrName}`,
+      unlockEstimate: item.recipeCoverage,
+      fancyUpEstimate: 0,
+      lowEffortScore: 35,
+      superFoodScore: item.recipeCoverage * 3,
+      roles: ["unlock"],
+    });
   }
 
-  return unlocks.sort((a, b) => b.unlockEstimate - a.unlockEstimate).slice(0, limit);
+  return rows.sort((a, b) => b.superFoodScore - a.superFoodScore).slice(0, limit);
 }
