@@ -1,21 +1,21 @@
 # Refined student corpus report
 
-Input candidates: 9141
-after fully_represented filter: 2148
-after quality gates: 1259
-after cross-level family dedupe: 1243
-after one-per-source: 1114
-after seed-signature dedupe: 745
-after struggle caps + limit: 211
-kept: 211
+Input candidates: 154270
+after fully_represented filter: 22515
+after quality gates: 11964
+after cross-level family dedupe: 11481
+after one-per-source: 9740
+after seed-signature dedupe: 5224
+after struggle caps + limit: 5224
+kept: 5224
 
 By struggle band:
-  1: 90
-  2: 55
-  3: 54
-  4: 12
+  1: 3533
+  2: 849
+  3: 730
+  4: 112
 
 By student level:
-  student: 46
-  practical: 37
-  struggle: 128
+  student: 851
+  practical: 662
+  struggle: 3711
