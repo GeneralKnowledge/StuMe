@@ -218,7 +218,9 @@ npm run recipes:inspect -- /path/to/full_dataset.csv --limit 10000
 npm run recipes:sample -- /path/to/full_dataset.csv --limit 5000
 ```
 
-Pipeline outputs land in `data/generated/student-candidates/` (gitignored): `inspect.md`, `report.md`, `examples.md`, `candidates.json`.
+Pipeline outputs land in `data/generated/student-candidates/` (gitignored by default): `inspect.md`, `report.md`, `examples.md`, `candidates.json`.
+
+A curated snapshot of **467 valid candidates** from the 5k-scale dry-run is committed at `data/generated/student-candidates/valid-5k/`.
 
 Architecture:
 
