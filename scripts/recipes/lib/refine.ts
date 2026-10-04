@@ -100,7 +100,7 @@ function passesQuality(candidate: StudentCandidate, minScore: number): boolean {
   if (candidate.estimatedMinutes > 25) return false;
   // Must have a recognizable meal base
   const slugs = new Set(required.map((item) => item.stumeSlug!));
-  const hasBase = ["eggs", "pasta", "rice", "microwave-rice", "bread", "instant-noodles", "noodles", "potatoes", "frozen-chips", "oats", "wraps"].some(
+  const hasBase = ["eggs", "pasta", "rice", "microwave-rice", "bread", "instant-noodles", "noodles", "potatoes", "frozen-chips", "oats", "wraps", "mince", "lentils"].some(
     (slug) => slugs.has(slug),
   );
   return hasBase;
@@ -156,21 +156,121 @@ function normalizeEquipment(equipment: string[]): string[] {
   return [...mapped];
 }
 
-/** Infer a short transformation path from seed transforms whose inputs are covered. */
-export function inferGraphPath(ingredientSlugs: string[]): {
+const MEAL_BASE_SLUGS = new Set([
+  "eggs",
+  "pasta",
+  "rice",
+  "microwave-rice",
+  "bread",
+  "instant-noodles",
+  "noodles",
+  "potatoes",
+  "frozen-chips",
+  "oats",
+  "wraps",
+  "mince",
+  "lentils",
+]);
+
+/** Infer a short, meal-relevant transformation path from covered ingredients. */
+export function inferGraphPath(
+  ingredientSlugs: string[],
+  context?: { title?: string; steps?: string[]; tags?: string[] },
+): {
   graphPath: string[];
   componentSlugs: string[];
 } {
   const have = new Set(ingredientSlugs);
-  const matched = TRANSFORMATIONS.filter((transform) => {
-    const required = transform.inputs.filter((input) => !input.optional && input.ingredientSlug);
-    if (required.length === 0) return false;
-    return required.every((input) => have.has(input.ingredientSlug!));
-  });
+  const haystack = normalizeTitle(
+    [context?.title ?? "", ...(context?.steps ?? []), ...(context?.tags ?? [])].join(" "),
+  );
 
-  // Prefer shorter, more specific transforms; keep at most 3
-  matched.sort((a, b) => a.inputs.length - b.inputs.length || a.timeMinutes - b.timeMinutes);
-  const chosen = matched.slice(0, 3);
+  type Scored = {
+    slug: string;
+    outputSlug: string;
+    score: number;
+    requiredCount: number;
+  };
+
+  const scored: Scored[] = [];
+  for (const transform of TRANSFORMATIONS) {
+    const requiredIngredientInputs = transform.inputs.filter(
+      (input) => !input.optional && input.ingredientSlug,
+    );
+    const requiredComponentInputs = transform.inputs.filter(
+      (input) => !input.optional && input.componentSlug,
+    );
+    // First-pass inference only uses ingredient-only transforms (no unresolved components).
+    if (requiredComponentInputs.length > 0) continue;
+    if (requiredIngredientInputs.length === 0) continue;
+    if (!requiredIngredientInputs.every((input) => have.has(input.ingredientSlug!))) continue;
+
+    let score = requiredIngredientInputs.length * 10;
+    if (transform.tags.includes("meal") || transform.tags.includes("meal-base")) score += 20;
+    if (requiredIngredientInputs.some((input) => MEAL_BASE_SLUGS.has(input.ingredientSlug!))) {
+      score += 15;
+    }
+    const method = transform.method.toLowerCase();
+    if (haystack.includes(method.replace("-", " ")) || haystack.includes(method)) score += 12;
+    for (const tag of transform.tags) {
+      if (haystack.includes(tag.replace("-", " ")) || haystack.includes(tag)) score += 8;
+    }
+    const outputTokens = transform.outputName.toLowerCase().split(/\s+/);
+    for (const token of outputTokens) {
+      if (token.length > 2 && haystack.includes(token)) score += 6;
+    }
+    // Prefer concrete cooking over bare seasoning transforms
+    if (requiredIngredientInputs.every((input) => ["salt", "pepper", "oil", "butter"].includes(input.ingredientSlug!))) {
+      score -= 25;
+    }
+    scored.push({
+      slug: transform.slug,
+      outputSlug: transform.outputSlug,
+      score,
+      requiredCount: requiredIngredientInputs.length,
+    });
+  }
+
+  scored.sort(
+    (a, b) =>
+      b.score - a.score ||
+      b.requiredCount - a.requiredCount ||
+      a.slug.localeCompare(b.slug),
+  );
+
+  const chosen: Scored[] = [];
+  const usedOutputs = new Set<string>();
+  for (const item of scored) {
+    if (usedOutputs.has(item.outputSlug)) continue;
+    chosen.push(item);
+    usedOutputs.add(item.outputSlug);
+    if (chosen.length >= 4) break;
+  }
+
+  // Second pass: assemble transforms whose component inputs are now available.
+  const availableComponents = new Set(chosen.map((item) => item.outputSlug));
+  for (const transform of TRANSFORMATIONS) {
+    const required = transform.inputs.filter((input) => !input.optional);
+    if (required.length === 0) continue;
+    const ok = required.every((input) => {
+      if (input.ingredientSlug) return have.has(input.ingredientSlug);
+      if (input.componentSlug) return availableComponents.has(input.componentSlug);
+      return false;
+    });
+    if (!ok) continue;
+    if (usedOutputs.has(transform.outputSlug)) continue;
+    if (!(transform.tags.includes("meal") || transform.tags.includes("meal-base"))) continue;
+    chosen.push({
+      slug: transform.slug,
+      outputSlug: transform.outputSlug,
+      score: 50,
+      requiredCount: required.length,
+    });
+    usedOutputs.add(transform.outputSlug);
+    availableComponents.add(transform.outputSlug);
+    if (chosen.length >= 5) break;
+  }
+
   return {
     graphPath: chosen.map((item) => item.slug),
     componentSlugs: [...new Set(chosen.map((item) => item.outputSlug))],
@@ -213,13 +313,18 @@ export function candidateToRefined(candidate: StudentCandidate): RefinedRecipe {
   }
   const uniqueIngredients = [...bySlug.values()];
   const slugs = uniqueIngredients.map((item) => item.slug);
-  const { graphPath, componentSlugs } = inferGraphPath(slugs);
+  const { graphPath, componentSlugs } = inferGraphPath(slugs, {
+    title: candidate.title,
+    steps: candidate.steps,
+    tags: [candidate.studentLevel, `struggle-${candidate.struggleBand}`],
+  });
   const tags = Array.from(
     new Set([
       "corpus",
       candidate.studentLevel,
       `struggle-${candidate.struggleBand}`,
       ...slugs.slice(0, 4),
+      ...componentSlugs.slice(0, 2),
     ]),
   );
   const equipment = normalizeEquipment(candidate.equipment);

@@ -1,6 +1,9 @@
 import type { FoodGraph } from "@/lib/graph/engine";
 import { rankRecipes } from "@/lib/scoring/score";
-import { recommendPurchases, recommendSuperFoods, topEssentialsBundle } from "@/lib/shopping/recommend";
+import {
+  scorePurchaseCandidates,
+  topEssentialsBundle,
+} from "@/lib/shopping/recommend";
 import type {
   GenerationConstraints,
   KitchenState,
@@ -103,9 +106,15 @@ export async function getRecommendations(
   const useSoon = ranked
     .filter((item) => item.usesExpiring && (item.canMakeNow || item.almostThere))
     .slice(0, 8);
-  const goodNextBuys = recommendPurchases(workingGraph, kitchen, 8);
+
+  // One purchase-score pass feeds next-buys + super foods; bundle still needs its own passes.
+  const purchaseScores = scorePurchaseCandidates(workingGraph, kitchen);
+  const goodNextBuys = [...purchaseScores].sort((a, b) => b.score - a.score).slice(0, 8);
+  const superFoods = purchaseScores
+    .filter((item) => item.isSuperFood)
+    .sort((a, b) => b.superFoodScore - a.superFoodScore)
+    .slice(0, 6);
   const bundleBuys = topEssentialsBundle(workingGraph, kitchen, 3);
-  const superFoods = recommendSuperFoods(workingGraph, kitchen, 6);
 
   return {
     makeNow: makeNow.slice(0, 10),

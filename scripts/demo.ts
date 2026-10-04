@@ -19,10 +19,11 @@ const INVENTORIES: Record<string, string[]> = {
 };
 
 async function main() {
-  const graph = buildGraphFromSeed();
-  console.log("=== StuMe seed validation demo ===");
+  const graph = buildGraphFromSeed({ includeCorpus: true });
+  const corpusCount = graph.recipes.filter((recipe) => recipe.generationSource === "corpus").length;
+  console.log("=== StuMe seed + corpus validation demo ===");
   console.log(
-    `Graph: ${graph.ingredients.size} ingredients, ${graph.transformations.length} transforms, ${graph.recipes.length} recipes\n`,
+    `Graph: ${graph.ingredients.size} ingredients, ${graph.transformations.length} transforms, ${graph.recipes.length} recipes (${corpusCount} corpus)\n`,
   );
 
   for (const [name, slugs] of Object.entries(INVENTORIES)) {
