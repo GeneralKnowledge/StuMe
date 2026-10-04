@@ -76,8 +76,15 @@ export function rowFromFields(fields: string[]): RawRecipeNlgRow | null {
   };
 }
 
+/** Preferred “clean” corpus labels for student sampling. */
 export function isGatheredSource(source: string): boolean {
-  return /^gathered$/i.test(source.trim());
+  const normalized = source.trim().toLowerCase();
+  return (
+    normalized === "gathered" ||
+    normalized === "foodcom" ||
+    normalized === "food.com" ||
+    normalized === "iris314"
+  );
 }
 
 /** Deterministic unit hash in [0, 1). Stable across runs for the same key. */

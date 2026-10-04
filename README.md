@@ -205,7 +205,7 @@ Microwave rice, frozen chips, instant noodles, baked beans, and leftover mushroo
 
 Separate from the Next.js app. Deterministic inspect → filter → normalize → corrupt → validate → dedupe flow.
 
-**Do not commit the raw RecipeNLG dataset.** Obtain `full_dataset.csv` yourself (see `data/README.md` and https://github.com/Glorf/recipenlg). The app does not require it.
+**Do not commit raw recipe corpora.** The official RecipeNLG download is often broken — use an alternate corpus instead (see `data/README.md`). The app does not require any external corpus.
 
 ```bash
 # Dev fixture (checked in)
@@ -213,9 +213,13 @@ npm run recipes:fixture
 npm run recipes:inspect -- data/fixtures/recipenlg_sample.csv
 npm run recipes:sample -- data/fixtures/recipenlg_sample.csv --limit 200
 
-# Real local corpus (not committed)
-npm run recipes:inspect -- /path/to/full_dataset.csv --limit 10000
-npm run recipes:sample -- /path/to/full_dataset.csv --limit 5000
+# Recommended alternate: ReciFine on Hugging Face (no captcha)
+npm run recipes:import -- --format recifine --limit 5000
+npm run recipes:sample -- data/external/recifine/sample_5000.csv --limit 5000 --gathered-only
+
+# Or Food.com-cleaned recipes
+npm run recipes:import -- --format iris314 --limit 5000
+npm run recipes:sample -- data/external/foodcom/sample_5000.csv --limit 5000
 ```
 
 Pipeline outputs land in `data/generated/student-candidates/` (gitignored by default): `inspect.md`, `report.md`, `examples.md`, `candidates.json`.

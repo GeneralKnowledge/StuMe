@@ -20,25 +20,60 @@ data/
       valid-5k/           # curated 467 valid candidates from the 5k dry-run (committed)
 ```
 
-## Obtaining RecipeNLG
+## Obtaining a recipe corpus (alternatives)
 
-1. Visit the RecipeNLG project: https://github.com/Glorf/recipenlg  
-2. Follow their instructions / homepage to download `dataset.zip` / `full_dataset.csv` manually.  
-3. Place the CSV somewhere local, e.g. `data/external/recipenlg/full_dataset.csv`.  
-4. Run pipeline commands with that path:
+The official RecipeNLG site download is often broken (captcha / HTTP 500).
+You do **not** need it for StuMe. Use one of these instead:
+
+### 1) ReciFine on Hugging Face (best drop-in)
+
+ReciFine is a public Hugging Face CSV with RecipeNLG-compatible
+`title/ingredients/directions/link/source/NER` columns (plus extra annotations).
+No captcha. Stream a 5k Gathered sample and convert:
 
 ```bash
-npm run recipes:inspect -- data/external/recipenlg/full_dataset.csv
-npm run recipes:sample -- data/external/recipenlg/full_dataset.csv --limit 5000
+npm run recipes:import -- --format recifine --limit 5000
+npm run recipes:sample -- data/external/recifine/sample_5000.csv --limit 5000 --gathered-only
 ```
 
-Expected columns (in order):
+Source: https://huggingface.co/datasets/nuhuibrahim/recifine  
+(Full file is large ~3GB; `--limit 5000` stops early.)
+
+### 2) Food.com cleaned recipes on Hugging Face
+
+~180k Food.com-derived recipes (`Iris314/recipe-cleaned`). Converted to
+RecipeNLG-shaped CSV with `source=FoodCom`:
+
+```bash
+npm run recipes:import -- --format iris314 --limit 5000
+npm run recipes:sample -- data/external/foodcom/sample_5000.csv --limit 5000
+```
+
+Source: https://huggingface.co/datasets/Iris314/recipe-cleaned
+
+### 3) Kaggle mirrors (if you have a Kaggle account)
+
+- RecipeNLG mirror: https://www.kaggle.com/datasets/nithyasrikumaravelu/recipenlgrecipe-genie  
+- Food.com RAW recipes: https://www.kaggle.com/datasets/shuyangli94/food-com-recipes-and-user-interactions  
+
+Then either point `recipes:sample` at a RecipeNLG-shaped CSV, or:
+
+```bash
+npm run recipes:import -- --format foodcom --input /path/to/RAW_recipes.csv --limit 5000
+```
+
+### 4) Official RecipeNLG (if the site works again)
+
+1. https://github.com/Glorf/recipenlg → project homepage → `full_dataset.csv`
+2. Place at `data/external/recipenlg/full_dataset.csv`
+3. `npm run recipes:sample -- data/external/recipenlg/full_dataset.csv --limit 5000`
+
+Expected RecipeNLG columns:
 
 `id,title,ingredients,directions,link,source,NER`
 
 Where `ingredients`, `directions`, and `NER` are Python/JSON list strings.
-
-The `source=Gathered` subset is reported by the dataset authors as cleaner (~1.6M of ~2.23M).
+`source=Gathered` is the cleaner subset (~1.6M of ~2.23M).
 
 ## Dev without the full corpus
 
