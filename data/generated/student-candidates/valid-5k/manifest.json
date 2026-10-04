@@ -1,0 +1,18 @@
+{
+  "count": 467,
+  "source": "RecipeNLG-shaped development corpus (dev_corpus_5000.csv)",
+  "note": "Transformed StuMe student candidates — not a redistributed RecipeNLG dump.",
+  "transformationVersion": "student-corruptor-v1",
+  "filter": "validationStatus !== unrepresentable",
+  "byStruggle": {
+    "1": 69,
+    "2": 244,
+    "3": 154,
+    "4": 0
+  },
+  "byValidation": {
+    "fully_represented": 449,
+    "needs_ingredients": 18
+  },
+  "generatedAt": "2026-10-04T19:03:46.395Z"
+}
