@@ -18,11 +18,16 @@ async function main() {
   const outDir =
     argValue(args, "--out") ??
     path.join("data", "generated", "student-candidates", "refined");
-  const limit = Number(argValue(args, "--limit") ?? 250);
+  const limitRaw = argValue(args, "--limit");
+  const limit = limitRaw !== undefined ? Number(limitRaw) : 250;
+  const noStruggleCaps = args.includes("--no-struggle-caps");
+  const minScore = Number(argValue(args, "--min-score") ?? 20);
 
   const raw = JSON.parse(await readFile(input, "utf8")) as StudentCandidate[];
   const { recipes, report } = refineCandidates(raw, {
     limit: Number.isFinite(limit) ? limit : 250,
+    minScore: Number.isFinite(minScore) ? minScore : 20,
+    struggleCaps: noStruggleCaps ? false : undefined,
   });
   const reportMarkdown = formatRefineReport(report);
 
@@ -34,7 +39,12 @@ async function main() {
       {
         count: recipes.length,
         sourceCandidates: input,
-        filter: "fully_represented + quality + one family/source + seed dedupe + struggle caps",
+        filter: noStruggleCaps
+          ? "fully_represented + quality + one family/source + seed/signature dedupe (no struggle caps)"
+          : "fully_represented + quality + one family/source + seed dedupe + struggle caps",
+        limit,
+        minScore,
+        noStruggleCaps,
         report,
       },
       null,

@@ -6,7 +6,7 @@ import type { CostCategory, Difficulty } from "../../../src/lib/types";
 import type { StudentCandidate, StruggleBand } from "./types";
 
 export interface RefineOptions {
-  /** Max recipes to keep after refinement (default 250). */
+  /** Max recipes to keep after refinement (default 250). Use 0 for uncapped. */
   limit?: number;
   /** Minimum suitability/corrupt score (default 20). */
   minScore?: number;
@@ -18,8 +18,11 @@ export interface RefineOptions {
   onePerFamily?: boolean;
   /** Exclude near-duplicates of hand-authored seed recipes (default true). */
   excludeSeedDuplicates?: boolean;
-  /** Soft caps per struggle band; omitted bands are uncapped. */
-  struggleCaps?: Partial<Record<StruggleBand, number>>;
+  /**
+   * Soft caps per struggle band; omitted bands are uncapped.
+   * Pass `{}` (or set `struggleCaps: false` via CLI --no-struggle-caps) to disable.
+   */
+  struggleCaps?: Partial<Record<StruggleBand, number>> | false;
 }
 
 export interface RefinedRecipe {
@@ -257,13 +260,17 @@ export function refineCandidates(
   candidates: StudentCandidate[],
   options?: RefineOptions,
 ): { recipes: RefinedRecipe[]; report: RefineReport } {
-  const limit = options?.limit ?? 250;
+  const rawLimit = options?.limit ?? 250;
+  const limit = rawLimit === 0 ? Number.POSITIVE_INFINITY : rawLimit;
   const minScore = options?.minScore ?? 20;
   const fullyRepresentedOnly = options?.fullyRepresentedOnly ?? true;
   const onePerSource = options?.onePerSource ?? true;
   const onePerFamily = options?.onePerFamily ?? true;
   const excludeSeedDuplicates = options?.excludeSeedDuplicates ?? true;
-  const struggleCaps = options?.struggleCaps ?? { 1: 90, 2: 90, 3: 70, 4: 40 };
+  const struggleCaps =
+    options?.struggleCaps === false
+      ? {}
+      : (options?.struggleCaps ?? { 1: 90, 2: 90, 3: 70, 4: 40 });
 
   const report: RefineReport = {
     input: candidates.length,
