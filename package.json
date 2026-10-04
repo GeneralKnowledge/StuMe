@@ -15,7 +15,15 @@
     "db:reset": "prisma migrate reset --force",
     "demo": "tsx scripts/demo.ts",
     "postinstall": "prisma generate",
-    "setup": "prisma db push && tsx prisma/seed.ts"
+    "setup": "prisma db push && tsx prisma/seed.ts",
+    "recipes:fixture": "node scripts/recipes/generate_fixture.mjs",
+    "recipes:inspect": "tsx scripts/recipes/inspect_recipenlg.ts",
+    "recipes:filter": "tsx scripts/recipes/filter_recipenlg.ts",
+    "recipes:normalize": "tsx scripts/recipes/normalize_ingredients.ts",
+    "recipes:corrupt": "tsx scripts/recipes/student_corrupt.ts",
+    "recipes:validate": "tsx scripts/recipes/validate_student_recipes.ts",
+    "recipes:sample": "tsx scripts/recipes/sample.ts",
+    "recipes:report": "tsx scripts/recipes/report.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

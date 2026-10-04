@@ -38,6 +38,13 @@ prisma/dev.db-journal
 *.db
 *.db-journal
 
+# RecipeNLG raw corpus and generated pipeline outputs
+data/external/recipenlg/**
+!data/external/recipenlg/.gitkeep
+data/generated/**
+!data/generated/**/.gitkeep
+!data/generated/student-candidates/.gitkeep
+
 # vercel
 .vercel
 

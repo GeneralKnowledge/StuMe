@@ -200,3 +200,37 @@ The MVP proves one thing:
 > A small graph of common cheap ingredients can produce a surprisingly large and useful cooking space.
 
 Microwave rice, frozen chips, instant noodles, baked beans, and leftover mushrooms are first-class citizens.
+
+## RecipeNLG student corpus pipeline
+
+Separate from the Next.js app. Deterministic inspect → filter → normalize → corrupt → validate → dedupe flow.
+
+**Do not commit the raw RecipeNLG dataset.** Obtain `full_dataset.csv` yourself (see `data/README.md` and https://github.com/Glorf/recipenlg). The app does not require it.
+
+```bash
+# Dev fixture (checked in)
+npm run recipes:fixture
+npm run recipes:inspect -- data/fixtures/recipenlg_sample.csv
+npm run recipes:sample -- data/fixtures/recipenlg_sample.csv --limit 200
+
+# Real local corpus (not committed)
+npm run recipes:inspect -- /path/to/full_dataset.csv --limit 10000
+npm run recipes:sample -- /path/to/full_dataset.csv --limit 5000
+```
+
+Pipeline outputs land in `data/generated/student-candidates/` (gitignored): `inspect.md`, `report.md`, `examples.md`, `candidates.json`.
+
+Architecture:
+
+```
+RecipeNLG
+  → deterministic filtering
+  → normalization
+  → student corruption (practical / student / struggle)
+  → validation against StuMe graph
+  → deduplication
+  → small candidate corpus
+  → OPTIONAL LLM wording cleanup later
+```
+
+The existing 40 hand-authored seed recipes remain the baseline. This pipeline does **not** import millions of rows into SQLite.
