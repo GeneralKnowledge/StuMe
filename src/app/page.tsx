@@ -85,6 +85,41 @@ export default async function HomePage() {
       <section className="section">
         <div className="section-head">
           <div>
+            <h2>Super foods</h2>
+            <p>
+              Low-effort buys that unlock the most meals — or fancy up what you can already make.
+            </p>
+          </div>
+        </div>
+        <div className="buy-grid">
+          {data.superFoods.length === 0 ? (
+            <div className="empty">No clear super foods for this kitchen yet.</div>
+          ) : (
+            data.superFoods.map((buy) => (
+              <div className="buy-card" key={buy.ingredientSlug}>
+                <h3>{buy.ingredientName}</h3>
+                <div className="meta">
+                  <span className="chip">super food</span>
+                  <span className="chip">{buy.costCategory.replaceAll("_", " ")}</span>
+                  {buy.roles.includes("unlock") && <span>{buy.mealUnlockValue} unlocks</span>}
+                  {buy.roles.includes("fancy_up") && <span>{buy.mealsFanciedUp} fancy-ups</span>}
+                </div>
+                <ul>
+                  {[...buy.unlockedRecipeTitles, ...buy.fanciedUpRecipeTitles]
+                    .slice(0, 4)
+                    .map((title) => (
+                      <li key={title}>{title}</li>
+                    ))}
+                </ul>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head">
+          <div>
             <h2>Good next buys</h2>
             <p>Cheap ingredients that unlock the most meals from what you own.</p>
           </div>
@@ -97,6 +132,7 @@ export default async function HomePage() {
                 <span className="chip">{buy.costCategory.replaceAll("_", " ")}</span>
                 <span>{buy.mealUnlockValue} new meals</span>
                 <span>{buy.mealsImproved} improved</span>
+                {buy.mealsFanciedUp > 0 && <span>{buy.mealsFanciedUp} fancy-ups</span>}
               </div>
               <ul>
                 {buy.unlockedRecipeTitles.slice(0, 4).map((title) => (

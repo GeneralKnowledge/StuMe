@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildGraphFromSeed } from "@/lib/graph/buildFromSeed";
 import { createKitchenState } from "@/lib/graph/engine";
 import { rankRecipes } from "@/lib/scoring/score";
-import { recommendPurchases } from "@/lib/shopping/recommend";
+import { recommendPurchases, recommendSuperFoods } from "@/lib/shopping/recommend";
 
 const graph = buildGraphFromSeed();
 
@@ -36,6 +36,24 @@ describe("recommendations", () => {
       expect.arrayContaining([buys[0]!.ingredientSlug]),
     );
     expect(["very_cheap", "cheap"]).toContain(buys[0]!.costCategory);
+  });
+
+  it("tracks super foods that unlock meals or fancy them up with low effort", () => {
+    const kitchen = createKitchenState(["rice", "eggs", "butter", "bread"]);
+    const supers = recommendSuperFoods(graph, kitchen, 8);
+    expect(supers.length).toBeGreaterThan(0);
+    expect(supers.every((item) => item.isSuperFood)).toBe(true);
+    expect(supers.every((item) => item.lowEffortScore >= 55)).toBe(true);
+    expect(
+      supers.some(
+        (item) =>
+          item.roles.includes("unlock") || item.roles.includes("fancy_up"),
+      ),
+    ).toBe(true);
+    // Cheese is a classic fancy-up / unlock for toast+egg kitchens
+    expect(supers.map((item) => item.ingredientSlug)).toEqual(
+      expect.arrayContaining(["cheese"]),
+    );
   });
 
   it("prioritises expiring ingredients in ranking", () => {
