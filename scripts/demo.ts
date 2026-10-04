@@ -56,6 +56,12 @@ async function main() {
         `  - ${buy.ingredientName} [${buy.costCategory}] unlocks ${buy.mealUnlockValue}: ${buy.unlockedRecipeTitles.slice(0, 3).join("; ")}`,
       );
     }
+    console.log("Super foods:");
+    for (const buy of result.superFoods.slice(0, 3)) {
+      console.log(
+        `  - ${buy.ingredientName} [${buy.roles.join("+")}] unlock ${buy.mealUnlockValue}, fancy-up ${buy.mealsFanciedUp}, low-effort ${buy.lowEffortScore}`,
+      );
+    }
     console.log(
       `Bundle of 3: ${result.bundleBuys.map((item) => item.ingredientName).join(", ")}\n`,
     );

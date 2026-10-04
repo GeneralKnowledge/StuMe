@@ -234,3 +234,12 @@ RecipeNLG
 ```
 
 The existing 40 hand-authored seed recipes remain the baseline. This pipeline does **not** import millions of rows into SQLite.
+
+### Super foods
+
+StuMe tracks **super foods**: low-effort ingredients that either:
+
+1. **unlock** the most new meals from what you already have, or
+2. **fancy up** meals you can already make (optional upgrades like cheese, soy sauce, frozen peas)
+
+They appear on the home screen and in RecipeNLG sample reports (`topSuperFoods`).

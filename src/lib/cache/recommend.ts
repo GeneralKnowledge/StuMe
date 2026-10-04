@@ -1,6 +1,6 @@
 import type { FoodGraph } from "@/lib/graph/engine";
 import { rankRecipes } from "@/lib/scoring/score";
-import { recommendPurchases, topEssentialsBundle } from "@/lib/shopping/recommend";
+import { recommendPurchases, recommendSuperFoods, topEssentialsBundle } from "@/lib/shopping/recommend";
 import type {
   GenerationConstraints,
   KitchenState,
@@ -16,6 +16,7 @@ export interface RecommendationResult {
   useSoon: RecipeCandidate[];
   goodNextBuys: ShoppingUnlock[];
   bundleBuys: ShoppingUnlock[];
+  superFoods: ShoppingUnlock[];
   generatedCount: number;
   usedGenerator: boolean;
 }
@@ -104,6 +105,7 @@ export async function getRecommendations(
     .slice(0, 8);
   const goodNextBuys = recommendPurchases(workingGraph, kitchen, 8);
   const bundleBuys = topEssentialsBundle(workingGraph, kitchen, 3);
+  const superFoods = recommendSuperFoods(workingGraph, kitchen, 6);
 
   return {
     makeNow: makeNow.slice(0, 10),
@@ -111,6 +113,7 @@ export async function getRecommendations(
     useSoon,
     goodNextBuys,
     bundleBuys,
+    superFoods,
     generatedCount,
     usedGenerator,
   };
