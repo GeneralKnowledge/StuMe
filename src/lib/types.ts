@@ -1,7 +1,7 @@
 export type CostCategory = "very_cheap" | "cheap" | "moderate" | "expensive";
 export type Difficulty = "easy" | "medium" | "hard";
 export type Storage = "fridge" | "freezer" | "cupboard";
-export type GenerationSource = "seed" | "graph" | "llm" | "manual";
+export type GenerationSource = "seed" | "graph" | "llm" | "manual" | "corpus";
 
 export interface ScoreWeights {
   availabilityPct: number;

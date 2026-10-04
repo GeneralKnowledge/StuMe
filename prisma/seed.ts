@@ -1,11 +1,24 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { INGREDIENTS } from "./seed/ingredients";
 import { TRANSFORMATIONS } from "./seed/transformations";
 import { RECIPES } from "./seed/recipes";
 import { DEFAULT_SCORE_WEIGHTS } from "../src/lib/types";
 import { buildRecipeSignature } from "../src/lib/validation/signature";
+import { ingestRefinedRecipes } from "../scripts/recipes/lib/ingest";
+import type { RefinedRecipe } from "../scripts/recipes/lib/refine";
 
 const prisma = new PrismaClient();
+
+const REFINED_CORPUS_PATH = path.join(
+  process.cwd(),
+  "data",
+  "generated",
+  "student-candidates",
+  "refined",
+  "candidates.json",
+);
 
 async function main() {
   console.log("Seeding StuMe food graph...");
@@ -158,6 +171,16 @@ async function main() {
     }
   }
 
+  let corpusInserted = 0;
+  if (existsSync(REFINED_CORPUS_PATH)) {
+    const refined = JSON.parse(readFileSync(REFINED_CORPUS_PATH, "utf8")) as RefinedRecipe[];
+    const ingest = await ingestRefinedRecipes(prisma, refined);
+    corpusInserted = ingest.inserted;
+    console.log(
+      `Ingested refined corpus: ${ingest.inserted} inserted, ${ingest.skippedDuplicate} signature skips.`,
+    );
+  }
+
   const kitchen = await prisma.kitchen.create({
     data: {
       name: "Demo Kitchen",
@@ -207,7 +230,9 @@ async function main() {
   });
 
   console.log(
-    `Seeded ${INGREDIENTS.length} ingredients, ${TRANSFORMATIONS.length} transformations, ${RECIPES.length} recipes.`,
+    `Seeded ${INGREDIENTS.length} ingredients, ${TRANSFORMATIONS.length} transformations, ${RECIPES.length} hand recipes` +
+      (corpusInserted ? ` + ${corpusInserted} corpus recipes` : "") +
+      ".",
   );
 }
 

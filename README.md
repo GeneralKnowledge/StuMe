@@ -224,7 +224,18 @@ npm run recipes:sample -- data/external/foodcom/sample_5000.csv --limit 5000
 
 Pipeline outputs land in `data/generated/student-candidates/` (gitignored by default): `inspect.md`, `report.md`, `examples.md`, `candidates.json`.
 
-A curated snapshot of **467 valid candidates** from the 5k-scale dry-run is committed at `data/generated/student-candidates/valid-5k/`.
+Curated corpus snapshots:
+
+- `data/generated/student-candidates/valid-5k/` — earlier synthetic dry-run (467 valid)
+- `data/generated/student-candidates/refined/` — **211 refined ReciFine recipes** promoted into the app DB (`generationSource: corpus`)
+
+```bash
+# Refine noisy pipeline output → tight import set
+npm run recipes:refine -- --input data/generated/student-candidates/sample/candidates.json --limit 250
+
+# Insert into SQLite (also happens automatically during db:seed when refined/ exists)
+npm run recipes:ingest
+```
 
 Architecture:
 

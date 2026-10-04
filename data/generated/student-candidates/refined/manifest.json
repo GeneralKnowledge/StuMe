@@ -1,0 +1,26 @@
+{
+  "count": 211,
+  "sourceCandidates": "data/generated/student-candidates/sample/candidates.json",
+  "filter": "fully_represented + quality + one family/source + seed dedupe + struggle caps",
+  "report": {
+    "input": 9141,
+    "afterFullyRepresented": 2148,
+    "afterQuality": 1259,
+    "afterFamilyDedupe": 1243,
+    "afterSourceDedupe": 1114,
+    "afterSeedDedupe": 745,
+    "afterStruggleCaps": 211,
+    "kept": 211,
+    "byStruggle": {
+      "1": 90,
+      "2": 55,
+      "3": 54,
+      "4": 12
+    },
+    "byLevel": {
+      "student": 46,
+      "practical": 37,
+      "struggle": 128
+    }
+  }
+}

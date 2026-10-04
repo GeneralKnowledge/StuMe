@@ -49,9 +49,11 @@ data/generated/**
 !data/generated/**/.gitkeep
 !data/generated/student-candidates/
 !data/generated/student-candidates/.gitkeep
-# Curated valid-candidate snapshot from the 5k-scale dry-run (not raw RecipeNLG)
+# Curated candidate snapshots (not raw RecipeNLG)
 !data/generated/student-candidates/valid-5k/
 !data/generated/student-candidates/valid-5k/**
+!data/generated/student-candidates/refined/
+!data/generated/student-candidates/refined/**
 
 # vercel
 .vercel
