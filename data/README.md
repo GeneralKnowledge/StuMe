@@ -47,4 +47,15 @@ npm run recipes:inspect -- data/fixtures/recipenlg_sample.csv
 npm run recipes:sample -- data/fixtures/recipenlg_sample.csv --limit 200
 ```
 
+For a **5k-scale** pipeline dry-run without downloading RecipeNLG, generate a
+local RecipeNLG-*shaped* development corpus (gitignored, not the real dataset):
+
+```bash
+npm run recipes:dev-corpus -- --count 5000
+npm run recipes:sample -- data/external/recipenlg/dev_corpus_5000.csv --limit 5000 --gathered-only
+```
+
+`recipes:sample` streams the CSV and keeps a bounded Gathered-preferring reservoir
+sample, so pointing it at a real multi-million-row `full_dataset.csv` stays memory-safe.
+
 The Next.js app does **not** require RecipeNLG to be present.

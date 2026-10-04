@@ -17,6 +17,7 @@
     "postinstall": "prisma generate",
     "setup": "prisma db push && tsx prisma/seed.ts",
     "recipes:fixture": "node scripts/recipes/generate_fixture.mjs",
+    "recipes:dev-corpus": "node scripts/recipes/generate_dev_corpus.mjs",
     "recipes:inspect": "tsx scripts/recipes/inspect_recipenlg.ts",
     "recipes:filter": "tsx scripts/recipes/filter_recipenlg.ts",
     "recipes:normalize": "tsx scripts/recipes/normalize_ingredients.ts",
