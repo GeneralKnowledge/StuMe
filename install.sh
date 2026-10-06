@@ -116,6 +116,10 @@ else
 fi
 
 echo ""
+echo "> rm -rf .next"
+rm -rf .next
+
+echo ""
 echo "> npm run build"
 npm run build
 
