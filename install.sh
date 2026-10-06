@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # StuMe VPS install — Node app + SQLite + optional demo seed.
 # Usage:
-#   ./install.sh              # install deps, db, seed demo, build
+#   ./install.sh              # install deps (incl. build tools), db, seed demo, build
 #   ./install.sh --no-seed    # skip seeding
 #   PORT=8080 ./install.sh    # remember PORT for how you start the app
+#   PRUNE_DEV=1 ./install.sh  # after build, drop devDependencies
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -92,8 +93,10 @@ source .env
 set +a
 
 echo ""
-echo "> npm ci"
-npm ci
+echo "> npm ci --include=dev"
+# Tailwind / TypeScript live in devDependencies but are required to build.
+# NODE_ENV=production would otherwise skip them.
+npm ci --include=dev
 
 echo ""
 echo "> npx prisma generate"
@@ -115,6 +118,13 @@ fi
 echo ""
 echo "> npm run build"
 npm run build
+
+# Optional: drop build-only packages after a successful production build
+if [[ "${PRUNE_DEV:-0}" == "1" ]]; then
+  echo ""
+  echo "> npm prune --omit=dev"
+  npm prune --omit=dev
+fi
 
 PORT_VALUE="${PORT:-8080}"
 
