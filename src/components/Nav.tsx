@@ -1,19 +1,19 @@
 import Link from "next/link";
 
-export function Nav() {
+export function Nav({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="nav-row">
-      <Link href="/" className="brand" style={{ fontSize: "1.4rem" }}>
+    <header className={compact ? "nav-row nav-row-compact" : "nav-row"}>
+      <Link href="/" className="brand brand-nav">
         StuMe
       </Link>
-      <div className="nav-links">
+      <div className="nav-links nav-links-desktop">
         <Link className="pill-link" href="/">
-          What can I make?
+          Cook
         </Link>
         <Link className="pill-link" href="/kitchen">
-          My kitchen
+          Kitchen
         </Link>
       </div>
-    </div>
+    </header>
   );
 }

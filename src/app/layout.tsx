@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Figtree, Syne } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,18 @@ export const metadata: Metadata = {
   title: "StuMe — cheap quick student cooking",
   description:
     "What can I make with the stuff I’ve already got? Graph-powered student meals, not an AI recipe chatbot.",
+  appleWebApp: {
+    capable: true,
+    title: "StuMe",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#10231f",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
