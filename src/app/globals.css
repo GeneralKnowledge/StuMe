@@ -474,6 +474,13 @@ select {
   border-color: var(--amber-line);
 }
 
+.chip.soft {
+  background: var(--line);
+  color: var(--fg-muted);
+  border-color: transparent;
+  font-weight: 600;
+}
+
 .chip.danger {
   background: var(--danger-soft);
   color: var(--danger-fg);
@@ -1056,6 +1063,19 @@ input[type="search"] {
 
 .section-quiet-buy {
   margin-top: 1.5rem;
+}
+
+.section-surprise {
+  margin-top: 1.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.surprise-shuffle {
+  min-height: 2.2rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 650;
 }
 
 .quiet-buy {
