@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /*
-  Two themes for comparison:
-  - linen (default): warm kitchen paper, tomato accent — “fed at 7pm”
-  - night: previous dark neon-lime
+  Brand themes (same accent family):
+  - linen (default / light): warm kitchen paper + mustard accent
+  - night (dark mode): warm charcoal + the same mustard, slightly lifted
   Toggle via [data-theme] on <html> (ThemeToggle).
 */
 
@@ -17,7 +17,7 @@
   --touch: 2.75rem;
 }
 
-/* Linen — default */
+/* Linen — light default */
 html[data-theme="linen"],
 html:not([data-theme]) {
   --bg: #e6e0d4;
@@ -30,12 +30,13 @@ html:not([data-theme]) {
   --surface-solid: #fffaf2;
   --line: rgba(26, 23, 20, 0.12);
   --line-strong: rgba(26, 23, 20, 0.2);
-  --accent: #c4321a;
-  --accent-deep: #a32814;
-  --accent-ink: #fff8f2;
-  --accent-soft: rgba(196, 50, 26, 0.1);
-  --accent-soft-strong: rgba(196, 50, 26, 0.16);
-  --accent-line: rgba(196, 50, 26, 0.28);
+  /* Mustard — quieter than tomato, still food-warm */
+  --accent: #9a6b2f;
+  --accent-deep: #7a5424;
+  --accent-ink: #fff8ef;
+  --accent-soft: rgba(154, 107, 47, 0.12);
+  --accent-soft-strong: rgba(154, 107, 47, 0.18);
+  --accent-line: rgba(154, 107, 47, 0.32);
   --herb: #2f5d3a;
   --herb-soft: rgba(47, 93, 58, 0.12);
   --amber: #a35c12;
@@ -50,8 +51,8 @@ html:not([data-theme]) {
   --input-bg: rgba(255, 252, 245, 0.95);
   --grid-line: rgba(26, 23, 20, 0.06);
   --body-bg:
-    radial-gradient(900px 500px at 0% 0%, rgba(196, 50, 26, 0.06), transparent 55%),
-    radial-gradient(800px 480px at 100% 10%, rgba(47, 93, 58, 0.07), transparent 50%),
+    radial-gradient(900px 500px at 0% 0%, rgba(154, 107, 47, 0.07), transparent 55%),
+    radial-gradient(800px 480px at 100% 10%, rgba(47, 93, 58, 0.06), transparent 50%),
     linear-gradient(180deg, var(--bg-wash) 0%, var(--bg) 55%, #ddd6c8 100%);
 
   /* Legacy aliases used across the stylesheet */
@@ -70,56 +71,55 @@ html:not([data-theme]) {
   --chip-ok-bg: var(--herb-soft);
 }
 
-/* Night — previous dark lime scheme */
+/* Night — warm dark mode (same brand, not neon lime) */
 html[data-theme="night"] {
-  --bg: #10231f;
-  --bg-wash: #0c1b18;
-  --fg: #d7ebe4;
-  --fg-muted: rgba(215, 235, 228, 0.68);
-  --fg-faint: rgba(215, 235, 228, 0.48);
-  --surface: rgba(26, 52, 46, 0.88);
-  --surface-2: rgba(16, 35, 31, 0.72);
-  --surface-solid: #1a342e;
-  --line: rgba(215, 235, 228, 0.14);
-  --line-strong: rgba(215, 235, 228, 0.22);
-  --accent: #c8f542;
-  --accent-deep: #9bcf14;
-  --accent-ink: #132019;
-  --accent-soft: rgba(200, 245, 66, 0.12);
-  --accent-soft-strong: rgba(200, 245, 66, 0.16);
-  --accent-line: rgba(200, 245, 66, 0.28);
-  --herb: #c8f542;
-  --herb-soft: rgba(200, 245, 66, 0.12);
-  --amber: #ffb45a;
-  --amber-soft: rgba(255, 180, 90, 0.12);
-  --amber-line: rgba(255, 180, 90, 0.28);
-  --danger: #ff6b5a;
-  --danger-soft: rgba(255, 107, 90, 0.12);
-  --danger-line: rgba(255, 107, 90, 0.28);
-  --danger-fg: #ffb0a7;
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
-  --nav-bg: rgba(12, 27, 24, 0.92);
-  --input-bg: rgba(8, 18, 16, 0.8);
-  --grid-line: rgba(215, 235, 228, 0.35);
+  --bg: #1a1612;
+  --bg-wash: #12100d;
+  --fg: #f0ebe3;
+  --fg-muted: rgba(240, 235, 227, 0.7);
+  --fg-faint: rgba(240, 235, 227, 0.5);
+  --surface: rgba(42, 36, 30, 0.92);
+  --surface-2: rgba(32, 27, 22, 0.88);
+  --surface-solid: #2a241e;
+  --line: rgba(240, 235, 227, 0.12);
+  --line-strong: rgba(240, 235, 227, 0.2);
+  --accent: #d4a04a;
+  --accent-deep: #b8862f;
+  --accent-ink: #1a1612;
+  --accent-soft: rgba(212, 160, 74, 0.14);
+  --accent-soft-strong: rgba(212, 160, 74, 0.2);
+  --accent-line: rgba(212, 160, 74, 0.35);
+  --herb: #8fbc8f;
+  --herb-soft: rgba(143, 188, 143, 0.14);
+  --amber: #e0a05a;
+  --amber-soft: rgba(224, 160, 90, 0.14);
+  --amber-line: rgba(224, 160, 90, 0.32);
+  --danger: #f07167;
+  --danger-soft: rgba(240, 113, 103, 0.14);
+  --danger-line: rgba(240, 113, 103, 0.32);
+  --danger-fg: #ffb4ae;
+  --shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  --nav-bg: rgba(18, 16, 13, 0.94);
+  --input-bg: rgba(12, 10, 8, 0.85);
+  --grid-line: rgba(240, 235, 227, 0.06);
   --body-bg:
-    radial-gradient(1200px 700px at 10% -10%, rgba(200, 245, 66, 0.16), transparent 55%),
-    radial-gradient(900px 600px at 90% 0%, rgba(47, 158, 143, 0.22), transparent 50%),
-    radial-gradient(700px 500px at 50% 100%, rgba(255, 180, 90, 0.1), transparent 45%),
-    linear-gradient(180deg, #0c1b18 0%, #10231f 40%, #0d1a17 100%);
+    radial-gradient(900px 520px at 8% 0%, rgba(212, 160, 74, 0.1), transparent 55%),
+    radial-gradient(800px 480px at 100% 8%, rgba(143, 188, 143, 0.07), transparent 50%),
+    linear-gradient(180deg, #12100d 0%, #1a1612 45%, #14110e 100%);
 
   --ink: var(--bg);
   --ink-soft: var(--surface-solid);
   --fog: var(--fg);
-  --mist: #eef7f3;
+  --mist: #f0ebe3;
   --lime: var(--accent);
   --lime-deep: var(--accent-deep);
-  --teal: #2f9e8f;
+  --teal: var(--herb);
   --card: var(--surface-2);
   --background: var(--bg);
   --foreground: var(--fg);
   --cta-on-accent: var(--accent-ink);
-  --chip-ok-fg: var(--accent);
-  --chip-ok-bg: var(--accent-soft);
+  --chip-ok-fg: var(--herb);
+  --chip-ok-bg: var(--herb-soft);
 }
 
 @theme inline {

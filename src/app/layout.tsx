@@ -32,7 +32,7 @@ export const viewport: Viewport = {
   themeColor: "#e6e0d4",
 };
 
-const themeBoot = `(function(){try{var t=localStorage.getItem('stume-theme');if(t!=='night'&&t!=='linen')t='linen';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='linen';}})();`;
+const themeBoot = `(function(){try{var t=localStorage.getItem('stume-theme');if(t!=='night'&&t!=='linen'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'night':'linen';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='linen';}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
