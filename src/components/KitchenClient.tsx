@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   addKitchenIngredient,
   removeKitchenIngredient,
@@ -28,6 +28,10 @@ type IngredientOption = {
   isEssential: boolean;
 };
 
+type StorageChoice = "fridge" | "freezer" | "cupboard";
+
+const ZONES = ["fridge", "cupboard", "freezer", "staples"] as const;
+
 export function KitchenClient({
   items,
   allIngredients,
@@ -36,6 +40,9 @@ export function KitchenClient({
   allIngredients: IngredientOption[];
 }) {
   const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const [storage, setStorage] = useState<StorageChoice>("cupboard");
 
   const grouped = {
     fridge: items.filter((item) => item.storage === "fridge"),
@@ -44,70 +51,134 @@ export function KitchenClient({
     staples: items.filter((item) => item.isStaple),
   };
 
-  const owned = new Set(items.map((item) => item.ingredientId));
-  const addable = allIngredients.filter((item) => !owned.has(item.id));
+  const owned = useMemo(() => new Set(items.map((item) => item.ingredientId)), [items]);
+  const addable = useMemo(
+    () => allIngredients.filter((item) => !owned.has(item.id)),
+    [allIngredients, owned],
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return addable.slice(0, 40);
+    return addable
+      .filter(
+        (item) =>
+          item.name.toLowerCase().includes(q) || item.slug.toLowerCase().includes(q),
+      )
+      .slice(0, 40);
+  }, [addable, query]);
+
+  function pickIngredient(item: IngredientOption) {
+    setSelectedId(item.id);
+    setQuery(item.name);
+    setStorage(item.defaultStorage);
+  }
 
   return (
-    <div style={{ display: "grid", gap: "1.25rem" }}>
+    <div className="kitchen-stack">
       <form
-        className="panel form-grid"
-        action={(formData) => startTransition(() => addKitchenIngredient(formData))}
+        className="panel kitchen-add"
+        action={(formData) => {
+          startTransition(() => addKitchenIngredient(formData));
+          setQuery("");
+          setSelectedId("");
+          setStorage("cupboard");
+        }}
       >
-        <label>
+        <label className="kitchen-search">
           Add ingredient
-          <select name="ingredientId" required defaultValue="">
-            <option value="" disabled>
-              Choose…
-            </option>
-            {addable.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
+          <input
+            type="search"
+            enterKeyHint="search"
+            placeholder="Search eggs, pasta, cheese…"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSelectedId("");
+            }}
+            autoComplete="off"
+          />
         </label>
-        <label>
-          Storage
-          <select name="storage" defaultValue="cupboard">
-            <option value="fridge">Fridge</option>
-            <option value="cupboard">Cupboard</option>
-            <option value="freezer">Freezer</option>
-          </select>
-        </label>
-        <label>
-          Quantity (optional)
-          <input name="quantity" type="text" placeholder="e.g. half a pack" />
-        </label>
-        <label className="check">
-          <input name="isStaple" type="checkbox" /> Staple
-        </label>
-        <label className="check">
-          <input name="expiringSoon" type="checkbox" /> Expiring soon
-        </label>
-        <button className="btn btn-primary" disabled={pending} type="submit">
+
+        <input type="hidden" name="ingredientId" value={selectedId} />
+        <input type="hidden" name="storage" value={storage} />
+
+        <div className="quick-picks" role="listbox" aria-label="Matching ingredients">
+          {filtered.length === 0 ? (
+            <div className="empty compact">No matches left to add.</div>
+          ) : (
+            filtered.map((item) => {
+              const active = item.id === selectedId;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  className={active ? "quick-pick active" : "quick-pick"}
+                  onClick={() => pickIngredient(item)}
+                >
+                  {item.name}
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <details className="kitchen-advanced">
+          <summary>Quantity & flags</summary>
+          <div className="advanced-grid">
+            <label>
+              Storage
+              <select
+                value={storage}
+                onChange={(event) => setStorage(event.target.value as StorageChoice)}
+              >
+                <option value="fridge">Fridge</option>
+                <option value="cupboard">Cupboard</option>
+                <option value="freezer">Freezer</option>
+              </select>
+            </label>
+            <label>
+              Quantity (optional)
+              <input name="quantity" type="text" placeholder="e.g. half a pack" />
+            </label>
+            <label className="check check-inline">
+              <input name="isStaple" type="checkbox" /> Staple
+            </label>
+            <label className="check check-inline">
+              <input name="expiringSoon" type="checkbox" /> Expiring soon
+            </label>
+          </div>
+        </details>
+
+        <button className="btn btn-primary btn-block" disabled={pending || !selectedId} type="submit">
           Add to kitchen
         </button>
       </form>
 
       <div className="kitchen-grid">
-        {(["fridge", "cupboard", "freezer", "staples"] as const).map((key) => (
+        {ZONES.map((key) => (
           <section className="panel" key={key}>
-            <h3 style={{ textTransform: "capitalize" }}>{key}</h3>
+            <div className="panel-head">
+              <h3>{key}</h3>
+              <span className="section-count soft">{grouped[key].length}</span>
+            </div>
             {grouped[key].length === 0 ? (
-              <div className="empty">Empty</div>
+              <div className="empty compact">Empty</div>
             ) : (
               grouped[key].map((item) => (
                 <div className="item-row" key={`${key}-${item.id}`}>
-                  <div>
+                  <div className="item-copy">
                     <strong>{item.name}</strong>
-                    <div style={{ fontSize: "0.85rem", color: "rgba(215,235,228,0.65)" }}>
+                    <span>
                       {item.quantity || "have some"}
-                      {item.expiringSoon ? " · expiring soon" : ""}
-                    </div>
+                      {item.expiringSoon ? " · expiring" : ""}
+                    </span>
                   </div>
-                  <div style={{ display: "flex", gap: "0.35rem" }}>
+                  <div className="item-actions">
                     <button
-                      className="pill-link"
+                      className={item.expiringSoon ? "pill-link warn-pill" : "pill-link"}
                       type="button"
                       disabled={pending}
                       onClick={() =>

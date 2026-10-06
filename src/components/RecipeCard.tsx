@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { SerializedCandidate } from "@/lib/kitchen/actions";
 
 function costLabel(value: string) {
@@ -11,49 +12,41 @@ export function RecipeCard({
   recipe: SerializedCandidate;
   mode: "now" | "almost" | "soon";
 }) {
+  const missingLabel = recipe.missingRequired[0]?.replaceAll("-", " ");
+
   return (
-    <article className="recipe-row">
-      <div>
+    <Link href={`/recipe/${recipe.id}`} className="recipe-card">
+      <div className="recipe-card-main">
         <h3>{recipe.title}</h3>
-        <p style={{ margin: 0, color: "rgba(215,235,228,0.75)" }}>{recipe.description}</p>
         <div className="meta">
           <span>{recipe.timeMinutes} min</span>
-          <span>·</span>
-          <span>{recipe.equipment.slice(0, 3).join(" · ") || "no fancy kit"}</span>
-          <span>·</span>
+          <span className="meta-dot">·</span>
           <span style={{ textTransform: "capitalize" }}>{costLabel(recipe.estimatedCost)}</span>
-          {mode === "now" && <span className="chip">You already have everything</span>}
-          {mode === "almost" && recipe.missingRequired[0] && (
-            <span className="chip warn">Needs {recipe.missingRequired[0].replaceAll("-", " ")}</span>
+          {mode === "now" && <span className="chip">Ready</span>}
+          {mode === "almost" && missingLabel && (
+            <span className="chip warn">Needs {missingLabel}</span>
           )}
-          {recipe.usesExpiring && <span className="chip danger">Uses expiring bits</span>}
+          {recipe.usesExpiring && <span className="chip danger">Expiring</span>}
         </div>
-        <ol className="steps">
-          {recipe.steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
         <div className="need-list">
-          {recipe.availableRequired.map((slug) => (
+          {recipe.availableRequired.slice(0, 4).map((slug) => (
             <span className="need ok" key={`ok-${slug}`}>
-              ✓ {slug.replaceAll("-", " ")}
+              {slug.replaceAll("-", " ")}
             </span>
           ))}
-          {recipe.missingRequired.map((slug) => (
+          {recipe.missingRequired.slice(0, 2).map((slug) => (
             <span className="need missing" key={`miss-${slug}`}>
               + {slug.replaceAll("-", " ")}
             </span>
           ))}
-          {recipe.availableOptional.slice(0, 4).map((slug) => (
-            <span className="need" key={`opt-${slug}`}>
-              ~ {slug.replaceAll("-", " ")}
-            </span>
-          ))}
+          {recipe.availableRequired.length > 4 && (
+            <span className="need">+{recipe.availableRequired.length - 4}</span>
+          )}
         </div>
       </div>
-      <div style={{ textAlign: "right", color: "rgba(215,235,228,0.55)", fontSize: "0.85rem" }}>
-        score {Math.round(recipe.score)}
+      <div className="recipe-card-aside">
+        <span className="recipe-card-cta">Cook</span>
       </div>
-    </article>
+    </Link>
   );
 }

@@ -1,3 +1,5 @@
+import { BottomNav } from "@/components/BottomNav";
+import { DemoButtons } from "@/components/DemoButtons";
 import { Nav } from "@/components/Nav";
 import { KitchenClient } from "@/components/KitchenClient";
 import { getKitchenView } from "@/lib/kitchen/actions";
@@ -8,19 +10,17 @@ export default async function KitchenPage() {
   const { kitchen, allIngredients } = await getKitchenView();
 
   return (
-    <main className="app-shell">
+    <main className="app-shell app-shell-nav">
       <Nav />
-      <section className="hero">
-        <h1>
-          My
-          <br />
-          <span>kitchen</span>
-        </h1>
-        <p>
-          Tell StuMe what you already have. Exact quantities optional. “Have mushrooms” is enough.
-        </p>
-      </section>
+      <header className="page-header">
+        <div className="page-header-row">
+          <h1>Kitchen</h1>
+          <span className="section-count soft">{kitchen.items.length}</span>
+        </div>
+      </header>
       <KitchenClient items={kitchen.items} allIngredients={allIngredients} />
+      <DemoButtons />
+      <BottomNav />
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { loadFoodGraph } from "@/lib/graph/load";
 import { createKitchenState } from "@/lib/graph/engine";
+import { scoreRecipe } from "@/lib/scoring/score";
 import { getRecommendations } from "@/lib/cache/recommend";
 import { createRecipeGenerator } from "@/lib/llm/generator";
 import type { Storage } from "@/lib/types";
@@ -269,3 +270,30 @@ function serializeCandidate(candidate: Awaited<ReturnType<typeof getRecommendati
 }
 
 export type SerializedCandidate = ReturnType<typeof serializeCandidate>;
+
+export async function getRecipeDetail(recipeId: string) {
+  const kitchenRow = await getOrCreateKitchen();
+  const graph = await loadFoodGraph();
+  const recipe = graph.recipes.find((item) => item.id === recipeId);
+  if (!recipe) return null;
+
+  const kitchen = createKitchenState(
+    kitchenRow.items.map((item) => item.ingredient.slug),
+    {
+      equipment: parseEquipment(kitchenRow.equipment),
+      expiringSlugs: kitchenRow.items
+        .filter((item) => item.expiringSoon)
+        .map((item) => item.ingredient.slug),
+      stapleSlugs: kitchenRow.items
+        .filter((item) => item.isStaple)
+        .map((item) => item.ingredient.slug),
+    },
+  );
+
+  const candidate = scoreRecipe(graph, recipe, kitchen);
+  return {
+    kitchenName: kitchenRow.name,
+    inventoryCount: kitchenRow.items.length,
+    recipe: serializeCandidate(candidate),
+  };
+}

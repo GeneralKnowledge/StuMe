@@ -38,18 +38,21 @@ export function DemoButtons() {
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="demo-row">
-      {DEMOS.map((demo) => (
-        <button
-          key={demo.label}
-          className="pill-link"
-          disabled={pending}
-          onClick={() => startTransition(() => setDemoInventory(demo.slugs))}
-          type="button"
-        >
-          {demo.label}
-        </button>
-      ))}
-    </div>
+    <details className="demo-panel">
+      <summary>Try a demo kitchen</summary>
+      <div className="demo-row">
+        {DEMOS.map((demo) => (
+          <button
+            key={demo.label}
+            className="pill-link"
+            disabled={pending}
+            onClick={() => startTransition(() => setDemoInventory(demo.slugs))}
+            type="button"
+          >
+            {demo.label}
+          </button>
+        ))}
+      </div>
+    </details>
   );
 }
