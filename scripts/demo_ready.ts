@@ -21,7 +21,11 @@ const REFINED_CANDIDATES = path.join(
   "candidates.json",
 );
 
-function run(command: string, args: string[], env: NodeJS.ProcessEnv = {}): void {
+function run(
+  command: string,
+  args: string[],
+  env: Partial<NodeJS.ProcessEnv> = {},
+): void {
   console.log(`\n> ${command} ${args.join(" ")}`);
   const result = spawnSync(command, args, {
     stdio: "inherit",

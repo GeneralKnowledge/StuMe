@@ -9,7 +9,7 @@ import { createKitchenState } from "@/lib/graph/engine";
 import { scoreRecipe } from "@/lib/scoring/score";
 import { getRecommendations } from "@/lib/cache/recommend";
 import { createRecipeGenerator } from "@/lib/llm/generator";
-import type { Storage } from "@/lib/types";
+import type { GraphRecipe, Storage } from "@/lib/types";
 import {
   ASSUMED_STAPLE_SLUGS,
   BASIC_STUDENT_EQUIPMENT,
@@ -446,6 +446,72 @@ function serializeCandidate(
 }
 
 export type SerializedCandidate = ReturnType<typeof serializeCandidate>;
+
+/** Browse-mode recipe — no kitchen matching. */
+function serializeBrowseRecipe(recipe: GraphRecipe): SerializedCandidate {
+  const kit = recipe.equipment.filter(Boolean);
+  const panCount = kit.filter((item) =>
+    ["pan", "pot", "bowl", "tray", "hob"].includes(item),
+  ).length;
+
+  return {
+    id: recipe.id,
+    title: recipe.title,
+    description: recipe.description,
+    steps: recipe.steps,
+    timeMinutes: recipe.timeMinutes,
+    difficulty: recipe.difficulty,
+    effort:
+      recipe.difficulty === "easy"
+        ? "Low effort"
+        : recipe.difficulty === "medium"
+          ? "Some effort"
+          : "More effort",
+    equipment: recipe.equipment,
+    kitLabel:
+      panCount <= 1
+        ? "1 pan"
+        : panCount === 2
+          ? "2 pots"
+          : kit.slice(0, 2).join(" · ") || "basic kit",
+    estimatedCost: recipe.estimatedCost,
+    tags: recipe.tags,
+    score: 0,
+    availabilityPct: 0,
+    availableRequired: [],
+    missingRequired: [],
+    availableOptional: [],
+    canMakeNow: false,
+    almostThere: false,
+    usesExpiring: false,
+    generationSource: recipe.generationSource,
+  };
+}
+
+function shuffleInPlace<T>(items: T[]): T[] {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = items[i]!;
+    items[i] = items[j]!;
+    items[j] = current;
+  }
+  return items;
+}
+
+/** Random recipes from the corpus — ignores kitchen inventory. */
+export async function getRandomRecipes(
+  count = 5,
+  /** Client nonce so each shuffle is a distinct server-action call. */
+  _nonce = 0,
+): Promise<SerializedCandidate[]> {
+  void _nonce;
+  const limit = Math.max(1, Math.min(Math.floor(count) || 5, 12));
+  const graph = await loadFoodGraph();
+  if (graph.recipes.length === 0) return [];
+
+  const picked = shuffleInPlace([...graph.recipes]).slice(0, limit);
+  return picked.map(serializeBrowseRecipe);
+}
 
 export async function getRecipeDetail(recipeId: string) {
   const kitchenRow = await getOrCreateKitchen();

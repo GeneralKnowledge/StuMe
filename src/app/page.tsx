@@ -4,9 +4,11 @@ import { BottomNav } from "@/components/BottomNav";
 import { InventoryStrip } from "@/components/InventoryStrip";
 import { Nav } from "@/components/Nav";
 import { RecipeCard } from "@/components/RecipeCard";
+import { SurpriseMe } from "@/components/SurpriseMe";
 import {
   getHomeRecommendations,
   getKitchenView,
+  getRandomRecipes,
   needsOnboarding,
 } from "@/lib/kitchen/actions";
 
@@ -18,7 +20,8 @@ export default async function HomePage() {
   }
 
   const data = await getHomeRecommendations();
-  const { allIngredients, popularIngredients } = await getKitchenView();
+  const [{ allIngredients, popularIngredients }, randomRecipes] =
+    await Promise.all([getKitchenView(), getRandomRecipes(5)]);
   const makeNow = data.makeNow ?? [];
   const almostThere = data.almostThere ?? [];
   const useSoon = data.useSoon ?? [];
@@ -126,6 +129,8 @@ export default async function HomePage() {
           </p>
         </section>
       )}
+
+      <SurpriseMe initial={randomRecipes} />
 
       <BottomNav />
     </main>
