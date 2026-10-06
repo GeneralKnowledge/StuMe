@@ -2,7 +2,9 @@
 
 StuMe answers one hungry question:
 
-**What can I make with the stuff I’ve already got?**
+**What can I eat with the stuff I’ve already got?**
+
+Open the app → see meals you can make now. Inventory is fuel for that answer, not a stocktaking chore: tap to add, no quantities, salt/pepper/oil assumed.
 
 It is not a traditional recipe website and not an AI chatbot. The core is a deterministic **ingredient → transformation → component → recipe** graph plus a persistent recipe cache. An LLM is an optional batch author used only when the cache lacks enough suitable variety.
 

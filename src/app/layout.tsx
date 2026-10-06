@@ -15,9 +15,9 @@ const figtree = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "StuMe — cheap quick student cooking",
+  title: "StuMe — what can I eat?",
   description:
-    "What can I make with the stuff I’ve already got? Graph-powered student meals, not an AI recipe chatbot.",
+    "Tell StuMe what’s in your kitchen. Get meals you can cook now — cheap, quick, student kit.",
   appleWebApp: {
     capable: true,
     title: "StuMe",

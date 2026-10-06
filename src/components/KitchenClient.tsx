@@ -2,10 +2,16 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
-  addKitchenIngredient,
+  quickAddIngredient,
   removeKitchenIngredient,
+  setAssumedStaple,
+  setKitchenEquipment,
   toggleExpiring,
 } from "@/lib/kitchen/actions";
+import {
+  BASIC_STUDENT_EQUIPMENT,
+  EXTRA_EQUIPMENT,
+} from "@/lib/kitchen/defaults";
 
 type KitchenItem = {
   id: string;
@@ -28,180 +34,186 @@ type IngredientOption = {
   isEssential: boolean;
 };
 
-type StorageChoice = "fridge" | "freezer" | "cupboard";
+type StapleToggle = {
+  slug: string;
+  name: string;
+  ingredientId: string;
+  enabled: boolean;
+};
 
-const ZONES = ["fridge", "cupboard", "freezer", "staples"] as const;
+type Popular = { id: string; slug: string; name: string };
 
 export function KitchenClient({
   items,
   allIngredients,
+  popularIngredients,
+  assumedStaples,
+  equipment,
 }: {
   items: KitchenItem[];
   allIngredients: IngredientOption[];
+  popularIngredients: Popular[];
+  assumedStaples: StapleToggle[];
+  equipment: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState("");
-  const [storage, setStorage] = useState<StorageChoice>("cupboard");
+  const [kit, setKit] = useState(() => new Set(equipment));
 
-  const grouped = {
-    fridge: items.filter((item) => item.storage === "fridge"),
-    cupboard: items.filter((item) => item.storage === "cupboard"),
-    freezer: items.filter((item) => item.storage === "freezer"),
-    staples: items.filter((item) => item.isStaple),
-  };
-
-  const owned = useMemo(() => new Set(items.map((item) => item.ingredientId)), [items]);
-  const addable = useMemo(
-    () => allIngredients.filter((item) => !owned.has(item.id)),
-    [allIngredients, owned],
-  );
+  const ownedIds = useMemo(() => new Set(items.map((item) => item.ingredientId)), [items]);
+  const visibleItems = items.filter((item) => !assumedStaples.some((s) => s.slug === item.slug));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return addable.slice(0, 40);
-    return addable
+    const pool = allIngredients.filter((item) => !ownedIds.has(item.id));
+    if (!q) {
+      const popularIds = new Set(popularIngredients.map((item) => item.id));
+      return pool.filter((item) => popularIds.has(item.id)).concat(
+        pool.filter((item) => !popularIds.has(item.id)).slice(0, 24),
+      );
+    }
+    return pool
       .filter(
         (item) =>
           item.name.toLowerCase().includes(q) || item.slug.toLowerCase().includes(q),
       )
       .slice(0, 40);
-  }, [addable, query]);
+  }, [allIngredients, ownedIds, popularIngredients, query]);
 
-  function pickIngredient(item: IngredientOption) {
-    setSelectedId(item.id);
-    setQuery(item.name);
-    setStorage(item.defaultStorage);
+  function persistEquipment(next: Set<string>) {
+    setKit(next);
+    startTransition(() => setKitchenEquipment([...next]));
   }
 
   return (
     <div className="kitchen-stack">
-      <form
-        className="panel kitchen-add"
-        action={(formData) => {
-          startTransition(() => addKitchenIngredient(formData));
-          setQuery("");
-          setSelectedId("");
-          setStorage("cupboard");
-        }}
-      >
+      <section className="panel kitchen-add">
         <label className="kitchen-search">
-          Add ingredient
+          Add to kitchen
           <input
             type="search"
             enterKeyHint="search"
             placeholder="Search eggs, pasta, cheese…"
             value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setSelectedId("");
-            }}
+            onChange={(event) => setQuery(event.target.value)}
             autoComplete="off"
           />
         </label>
-
-        <input type="hidden" name="ingredientId" value={selectedId} />
-        <input type="hidden" name="storage" value={storage} />
-
-        <div className="quick-picks" role="listbox" aria-label="Matching ingredients">
+        <p className="kitchen-hint">Tap to add. No quantities needed.</p>
+        <div className="quick-picks" aria-label="Ingredients to add">
           {filtered.length === 0 ? (
             <div className="empty compact">No matches left to add.</div>
           ) : (
-            filtered.map((item) => {
-              const active = item.id === selectedId;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  className={active ? "quick-pick active" : "quick-pick"}
-                  onClick={() => pickIngredient(item)}
-                >
-                  {item.name}
-                </button>
-              );
-            })
+            filtered.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="quick-pick"
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    await quickAddIngredient(item.id);
+                    setQuery("");
+                  })
+                }
+              >
+                {item.name}
+              </button>
+            ))
           )}
         </div>
+      </section>
 
-        <details className="kitchen-advanced">
-          <summary>Quantity & flags</summary>
-          <div className="advanced-grid">
-            <label>
-              Storage
-              <select
-                value={storage}
-                onChange={(event) => setStorage(event.target.value as StorageChoice)}
-              >
-                <option value="fridge">Fridge</option>
-                <option value="cupboard">Cupboard</option>
-                <option value="freezer">Freezer</option>
-              </select>
-            </label>
-            <label>
-              Quantity (optional)
-              <input name="quantity" type="text" placeholder="e.g. half a pack" />
-            </label>
-            <label className="check check-inline">
-              <input name="isStaple" type="checkbox" /> Staple
-            </label>
-            <label className="check check-inline">
-              <input name="expiringSoon" type="checkbox" /> Expiring soon
-            </label>
-          </div>
-        </details>
-
-        <button className="btn btn-primary btn-block" disabled={pending || !selectedId} type="submit">
-          Add to kitchen
-        </button>
-      </form>
-
-      <div className="kitchen-grid">
-        {ZONES.map((key) => (
-          <section className="panel" key={key}>
-            <div className="panel-head">
-              <h3>{key}</h3>
-              <span className="section-count soft">{grouped[key].length}</span>
+      <section className="panel">
+        <div className="panel-head">
+          <h3>In your kitchen</h3>
+          <span className="section-count soft">{visibleItems.length}</span>
+        </div>
+        {visibleItems.length === 0 ? (
+          <div className="empty compact">Empty — add a few staples above.</div>
+        ) : (
+          visibleItems.map((item) => (
+            <div className="item-row" key={item.id}>
+              <div className="item-copy">
+                <strong>{item.name}</strong>
+                <span>{item.expiringSoon ? "Use soon" : "Have"}</span>
+              </div>
+              <div className="item-actions">
+                <button
+                  className={item.expiringSoon ? "pill-link warn-pill" : "pill-link"}
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    startTransition(() => toggleExpiring(item.id, !item.expiringSoon))
+                  }
+                >
+                  {item.expiringSoon ? "Keep" : "Use soon"}
+                </button>
+                <button
+                  className="pill-link"
+                  type="button"
+                  disabled={pending}
+                  onClick={() => startTransition(() => removeKitchenIngredient(item.id))}
+                >
+                  Remove
+                </button>
+              </div>
             </div>
-            {grouped[key].length === 0 ? (
-              <div className="empty compact">Empty</div>
-            ) : (
-              grouped[key].map((item) => (
-                <div className="item-row" key={`${key}-${item.id}`}>
-                  <div className="item-copy">
-                    <strong>{item.name}</strong>
-                    <span>
-                      {item.quantity || "have some"}
-                      {item.expiringSoon ? " · expiring" : ""}
-                    </span>
-                  </div>
-                  <div className="item-actions">
-                    <button
-                      className={item.expiringSoon ? "pill-link warn-pill" : "pill-link"}
-                      type="button"
-                      disabled={pending}
-                      onClick={() =>
-                        startTransition(() => toggleExpiring(item.id, !item.expiringSoon))
-                      }
-                    >
-                      {item.expiringSoon ? "Keep" : "Expiring"}
-                    </button>
-                    <button
-                      className="pill-link"
-                      type="button"
-                      disabled={pending}
-                      onClick={() => startTransition(() => removeKitchenIngredient(item.id))}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </section>
-        ))}
-      </div>
+          ))
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>Always assume</h3>
+        </div>
+        <p className="kitchen-hint">We won&apos;t say you&apos;re missing these unless you turn them off.</p>
+        <div className="quick-picks">
+          {assumedStaples.map((staple) => (
+            <button
+              key={staple.slug}
+              type="button"
+              className={staple.enabled ? "quick-pick active" : "quick-pick"}
+              disabled={pending || !staple.ingredientId}
+              onClick={() =>
+                startTransition(() => setAssumedStaple(staple.slug, !staple.enabled))
+              }
+            >
+              {staple.enabled ? "✓ " : ""}
+              {staple.name}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>Kit</h3>
+        </div>
+        <p className="kitchen-hint">Basic student kitchen by default.</p>
+        <div className="quick-picks">
+          {[...BASIC_STUDENT_EQUIPMENT, ...EXTRA_EQUIPMENT].map((item) => {
+            const on = kit.has(item);
+            return (
+              <button
+                key={item}
+                type="button"
+                className={on ? "quick-pick active" : "quick-pick"}
+                disabled={pending}
+                onClick={() => {
+                  const next = new Set(kit);
+                  if (on) next.delete(item);
+                  else next.add(item);
+                  persistEquipment(next);
+                }}
+              >
+                {on ? "✓ " : ""}
+                {item.replace("-", " ")}
+              </button>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

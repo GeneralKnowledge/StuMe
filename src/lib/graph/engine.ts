@@ -180,6 +180,18 @@ export function rejectUnavailableMandatory(
   return missing;
 }
 
+/** Salt/pepper never block "can make"; oil/butter count as interchangeable fat. */
+const PANTRY_IGNORE = new Set(["salt", "pepper"]);
+const FAT_SLUGS = new Set(["oil", "butter"]);
+
+function kitchenHasIngredient(kitchen: KitchenState, slug: string): boolean {
+  if (kitchen.ingredientSlugs.has(slug)) return true;
+  if (FAT_SLUGS.has(slug)) {
+    return [...FAT_SLUGS].some((fat) => kitchen.ingredientSlugs.has(fat));
+  }
+  return false;
+}
+
 export function recipeIngredientCoverage(
   recipe: GraphRecipe,
   kitchen: KitchenState,
@@ -190,17 +202,19 @@ export function recipeIngredientCoverage(
   missingOptional: string[];
   availabilityPct: number;
 } {
-  const required = recipe.ingredients.filter((item) => !item.optional);
+  const required = recipe.ingredients.filter(
+    (item) => !item.optional && !PANTRY_IGNORE.has(item.ingredientSlug),
+  );
   const optional = recipe.ingredients.filter((item) => item.optional);
 
   // Handle rice alternatives: if recipe has both rice and microwave-rice as optional,
   // treat "has either" as satisfying a carb base when at least one is listed optional.
   const availableRequired = required
-    .filter((item) => kitchen.ingredientSlugs.has(item.ingredientSlug))
+    .filter((item) => kitchenHasIngredient(kitchen, item.ingredientSlug))
     .map((item) => item.ingredientSlug);
 
   let missingRequired = required
-    .filter((item) => !kitchen.ingredientSlugs.has(item.ingredientSlug))
+    .filter((item) => !kitchenHasIngredient(kitchen, item.ingredientSlug))
     .map((item) => item.ingredientSlug);
 
   const hasRiceFamily =
@@ -213,10 +227,10 @@ export function recipeIngredientCoverage(
 
   // If all required ingredients are fat alternatives listed separately, keep standard logic.
   const availableOptional = optional
-    .filter((item) => kitchen.ingredientSlugs.has(item.ingredientSlug))
+    .filter((item) => kitchenHasIngredient(kitchen, item.ingredientSlug))
     .map((item) => item.ingredientSlug);
   const missingOptional = optional
-    .filter((item) => !kitchen.ingredientSlugs.has(item.ingredientSlug))
+    .filter((item) => !kitchenHasIngredient(kitchen, item.ingredientSlug))
     .map((item) => item.ingredientSlug);
 
   // Recipes that list rice/microwave-rice only as optional need a soft carb check.

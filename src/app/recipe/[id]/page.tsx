@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddMissingButton } from "@/components/AddMissingButton";
 import { BottomNav } from "@/components/BottomNav";
 import { Nav } from "@/components/Nav";
 import { getRecipeDetail } from "@/lib/kitchen/actions";
 
 export const dynamic = "force-dynamic";
-
-function costLabel(value: string) {
-  return value.replaceAll("_", " ");
-}
 
 export default async function RecipeDetailPage({
   params,
@@ -19,8 +16,8 @@ export default async function RecipeDetailPage({
   const data = await getRecipeDetail(id);
   if (!data) notFound();
 
-  const { recipe } = data;
-  const mode = recipe.canMakeNow ? "now" : recipe.almostThere ? "almost" : "soon";
+  const { recipe, missingWithIds } = data;
+  const mode = recipe.canMakeNow ? "now" : recipe.almostThere ? "almost" : "look";
 
   return (
     <main className="app-shell app-shell-nav">
@@ -36,36 +33,23 @@ export default async function RecipeDetailPage({
           </div>
           <div className="meta">
             <span className="chip">
-              {mode === "now" ? "Ready" : mode === "almost" ? "Almost" : "Look"}
+              {mode === "now" ? "Make now" : mode === "almost" ? "Almost" : "Look"}
             </span>
             <span>{recipe.timeMinutes} min</span>
             <span className="meta-dot">·</span>
-            <span style={{ textTransform: "capitalize" }}>{recipe.difficulty}</span>
+            <span>{recipe.kitLabel}</span>
             <span className="meta-dot">·</span>
-            <span style={{ textTransform: "capitalize" }}>{costLabel(recipe.estimatedCost)}</span>
-            {recipe.usesExpiring && <span className="chip danger">Expiring</span>}
-            {mode === "almost" && recipe.missingRequired[0] && (
-              <span className="chip warn">
-                Needs {recipe.missingRequired[0].replaceAll("-", " ")}
-              </span>
-            )}
+            <span>{recipe.effort}</span>
+            {recipe.usesExpiring && <span className="chip danger">Uses soon</span>}
           </div>
-          {recipe.description && (
-            <p className="page-header-meta recipe-detail-lead">{recipe.description}</p>
-          )}
         </header>
 
         <section className="detail-block">
-          <h2>You need</h2>
+          <h2>You have</h2>
           <div className="need-list need-list-lg">
             {recipe.availableRequired.map((slug) => (
               <span className="need ok" key={`ok-${slug}`}>
-                Have {slug.replaceAll("-", " ")}
-              </span>
-            ))}
-            {recipe.missingRequired.map((slug) => (
-              <span className="need missing" key={`miss-${slug}`}>
-                Get {slug.replaceAll("-", " ")}
+                ✓ {slug.replaceAll("-", " ")}
               </span>
             ))}
             {recipe.availableOptional.map((slug) => (
@@ -74,15 +58,27 @@ export default async function RecipeDetailPage({
               </span>
             ))}
           </div>
-          {recipe.equipment.length > 0 && (
-            <p className="detail-kit">
-              Kit: {recipe.equipment.filter(Boolean).slice(0, 5).join(" · ") || "basic"}
-            </p>
+          {missingWithIds.length === 0 ? (
+            <p className="detail-all-set">You don&apos;t need anything else.</p>
+          ) : (
+            <>
+              <h2 className="detail-subhead">Missing</h2>
+              <div className="need-list need-list-lg">
+                {missingWithIds.map((item) => (
+                  <AddMissingButton
+                    key={item.slug}
+                    ingredientId={item.ingredientId}
+                    label={item.name}
+                  />
+                ))}
+              </div>
+              <p className="kitchen-hint">Tap “I have …” if it&apos;s already in your kitchen.</p>
+            </>
           )}
         </section>
 
         <section className="detail-block">
-          <h2>Steps</h2>
+          <h2>How to make it</h2>
           <ol className="steps steps-lg">
             {recipe.steps.map((step, index) => (
               <li key={`${index}-${step.slice(0, 24)}`}>
