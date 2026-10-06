@@ -92,8 +92,10 @@ source .env
 set +a
 
 echo ""
-echo "> npm ci"
-npm ci
+echo "> npm ci --include=dev"
+# Tailwind / TypeScript live in devDependencies but are required to build.
+# NODE_ENV=production would otherwise skip them.
+npm ci --include=dev
 
 echo ""
 echo "> npx prisma generate"
@@ -115,6 +117,13 @@ fi
 echo ""
 echo "> npm run build"
 npm run build
+
+# Optional: drop build-only packages after a successful production build
+if [[ "${PRUNE_DEV:-0}" == "1" ]]; then
+  echo ""
+  echo "> npm prune --omit=dev"
+  npm prune --omit=dev
+fi
 
 PORT_VALUE="${PORT:-8080}"
 
