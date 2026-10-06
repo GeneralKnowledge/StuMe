@@ -27,7 +27,7 @@ export function RecipeCard({
                 : ""}
             </span>
           )}
-          {recipe.usesExpiring && <span className="chip danger">Uses soon</span>}
+          {recipe.usesExpiring && <span className="chip warn">Uses soon</span>}
         </div>
         {mode === "almost" && missingLabel ? (
           <p className="recipe-card-miss">+1 ingredient</p>
