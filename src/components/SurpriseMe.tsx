@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { RecipeCard } from "@/components/RecipeCard";
 import {
   getRandomRecipes,
@@ -13,13 +13,17 @@ export function SurpriseMe({
   initial: SerializedCandidate[];
 }) {
   const [recipes, setRecipes] = useState(initial);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
-  function shuffle() {
-    startTransition(async () => {
+  async function shuffle() {
+    if (pending) return;
+    setPending(true);
+    try {
       const next = await getRandomRecipes(5);
       setRecipes(next);
-    });
+    } finally {
+      setPending(false);
+    }
   }
 
   if (recipes.length === 0) return null;
@@ -31,8 +35,11 @@ export function SurpriseMe({
         <button
           type="button"
           className="pill-link surprise-shuffle"
-          onClick={shuffle}
+          onClick={() => {
+            void shuffle();
+          }}
           disabled={pending}
+          aria-busy={pending}
         >
           {pending ? "Shuffling…" : "Shuffle"}
         </button>
