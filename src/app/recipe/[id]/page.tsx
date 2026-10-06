@@ -40,7 +40,7 @@ export default async function RecipeDetailPage({
             <span>{recipe.kitLabel}</span>
             <span className="meta-dot">·</span>
             <span>{recipe.effort}</span>
-            {recipe.usesExpiring && <span className="chip danger">Uses soon</span>}
+            {recipe.usesExpiring && <span className="chip warn">Uses soon</span>}
           </div>
         </header>
 

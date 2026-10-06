@@ -15,7 +15,7 @@ function applyTheme(theme: StuMeTheme) {
   }
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute("content", theme === "linen" ? "#e6e0d4" : "#10231f");
+    meta.setAttribute("content", theme === "linen" ? "#e6e0d4" : "#1a1612");
   }
 }
 
@@ -29,7 +29,7 @@ export function readStoredTheme(): StuMeTheme {
   return "linen";
 }
 
-/** Small control so linen vs night can be compared in-product. */
+/** Light (linen) ↔ dark mode toggle. */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<StuMeTheme>("linen");
 
@@ -45,15 +45,17 @@ export function ThemeToggle() {
     applyTheme(next);
   }
 
+  const goingDark = theme === "linen";
+
   return (
     <button
       type="button"
       className="theme-toggle"
       onClick={toggle}
-      aria-label={theme === "linen" ? "Switch to night colours" : "Switch to linen colours"}
-      title={theme === "linen" ? "Night" : "Linen"}
+      aria-label={goingDark ? "Switch to dark mode" : "Switch to light mode"}
+      title={goingDark ? "Dark" : "Light"}
     >
-      {theme === "linen" ? "Night" : "Linen"}
+      {goingDark ? "Dark" : "Light"}
     </button>
   );
 }
