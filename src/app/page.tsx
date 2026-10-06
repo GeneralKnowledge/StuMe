@@ -1,48 +1,79 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
+import { InventoryStrip } from "@/components/InventoryStrip";
 import { Nav } from "@/components/Nav";
 import { RecipeCard } from "@/components/RecipeCard";
-import { getHomeRecommendations } from "@/lib/kitchen/actions";
+import {
+  getHomeRecommendations,
+  getKitchenView,
+  needsOnboarding,
+} from "@/lib/kitchen/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  if (await needsOnboarding()) {
+    redirect("/onboarding");
+  }
+
   const data = await getHomeRecommendations();
+  const { allIngredients, popularIngredients } = await getKitchenView();
   const makeNow = data.makeNow ?? [];
   const almostThere = data.almostThere ?? [];
   const useSoon = data.useSoon ?? [];
-  const superFoods = data.superFoods ?? [];
   const goodNextBuys = data.goodNextBuys ?? [];
-  const bundleBuys = data.bundleBuys ?? [];
-  const makeNowPreview = makeNow.slice(0, 6);
-  const almostPreview = almostThere.slice(0, 4);
+  const makeNowPreview = makeNow.slice(0, 8);
+  const almostPreview = almostThere.slice(0, 5);
   const soonPreview = useSoon.slice(0, 3);
+  const topBuy = goodNextBuys[0];
 
   return (
     <main className="app-shell app-shell-nav">
       <Nav />
-      <header className="page-header">
-        <div className="page-header-row">
-          <h1>What can I make?</h1>
-          <p className="page-header-meta">
-            {data.inventoryCount} in {data.kitchenName}
-          </p>
-        </div>
-      </header>
+
+      <InventoryStrip
+        items={data.inventory}
+        popular={popularIngredients}
+        allIngredients={allIngredients.map((item) => ({
+          id: item.id,
+          slug: item.slug,
+          name: item.name,
+        }))}
+      />
 
       <section className="section section-primary">
         <div className="section-head">
           <h2>Make now</h2>
-          {makeNow.length > 0 && <span className="section-count">{makeNow.length}</span>}
+          {makeNow.length > 0 && (
+            <span className="section-count">{makeNow.length}</span>
+          )}
         </div>
+        {makeNow.length > 0 && (
+          <p className="section-sub">
+            You can make {makeNow.length} thing{makeNow.length === 1 ? "" : "s"} right now.
+          </p>
+        )}
         <div className="recipe-list">
           {makeNowPreview.length === 0 ? (
             <div className="empty">
-              Nothing solid yet.{" "}
-              <Link href="/kitchen" className="text-link">
-                Add a few staples
-              </Link>
-              .
+              {data.inventoryCount === 0 ? (
+                <>
+                  Add 3 things you have — we&apos;ll tell you what you can eat.
+                </>
+              ) : data.inventoryCount < 3 ? (
+                <>
+                  Add one more staple (eggs or pasta usually unlocks something).
+                </>
+              ) : (
+                <>
+                  Nothing solid with this mix yet.{" "}
+                  <Link href="/kitchen" className="text-link">
+                    Tweak your kitchen
+                  </Link>
+                  .
+                </>
+              )}
             </div>
           ) : (
             makeNowPreview.map((recipe) => (
@@ -57,6 +88,7 @@ export default async function HomePage() {
           <div className="section-head">
             <h2>Use this soon</h2>
           </div>
+          <p className="section-sub">Meals that use food you marked Use soon.</p>
           <div className="recipe-list">
             {soonPreview.map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} mode="soon" />
@@ -71,7 +103,7 @@ export default async function HomePage() {
         </div>
         <div className="recipe-list">
           {almostPreview.length === 0 ? (
-            <div className="empty">No near-misses right now.</div>
+            <div className="empty">No one-ingredient near-misses right now.</div>
           ) : (
             almostPreview.map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} mode="almost" />
@@ -80,65 +112,20 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section section-shop">
-        <div className="section-head">
-          <h2>Smart buys</h2>
-        </div>
-
-        {superFoods.length > 0 && (
-          <>
-            <h3 className="subsection-label">Super foods</h3>
-            <div className="buy-rail">
-              {superFoods.map((buy) => (
-                <div className="buy-card" key={buy.ingredientSlug}>
-                  <h3>{buy.ingredientName}</h3>
-                  <div className="meta">
-                    <span className="chip">super</span>
-                    <span className="chip">{buy.costCategory.replaceAll("_", " ")}</span>
-                  </div>
-                  <p className="buy-stat">
-                    {buy.roles.includes("unlock") && `${buy.mealUnlockValue} unlocks`}
-                    {buy.roles.includes("unlock") && buy.roles.includes("fancy_up") && " · "}
-                    {buy.roles.includes("fancy_up") && `${buy.mealsFanciedUp} fancy-ups`}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        <h3 className="subsection-label">Next buys</h3>
-        <div className="buy-rail">
-          {goodNextBuys.slice(0, 6).map((buy) => (
-            <div className="buy-card" key={buy.ingredientSlug}>
-              <h3>{buy.ingredientName}</h3>
-              <div className="meta">
-                <span className="chip">{buy.costCategory.replaceAll("_", " ")}</span>
-                <span>{buy.mealUnlockValue} meals</span>
-              </div>
-              <ul>
-                {buy.unlockedRecipeTitles.slice(0, 2).map((title) => (
-                  <li key={title}>{title}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {bundleBuys.length > 0 && (
-          <>
-            <h3 className="subsection-label">If you buy 3</h3>
-            <div className="bundle-row">
-              {bundleBuys.map((buy, index) => (
-                <div className="bundle-chip" key={buy.ingredientSlug}>
-                  <span className="bundle-num">{index + 1}</span>
-                  <span>{buy.ingredientName}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
+      {topBuy && topBuy.mealUnlockValue > 0 && (
+        <section className="section section-quiet-buy">
+          <p className="quiet-buy">
+            <strong>Buy {topBuy.ingredientName.toLowerCase()}</strong>
+            {" — "}
+            unlocks {topBuy.mealUnlockValue} meal
+            {topBuy.mealUnlockValue === 1 ? "" : "s"} from what you already have
+            {topBuy.unlockedRecipeTitles[0]
+              ? ` (e.g. ${topBuy.unlockedRecipeTitles[0]})`
+              : ""}
+            .
+          </p>
+        </section>
+      )}
 
       <BottomNav />
     </main>

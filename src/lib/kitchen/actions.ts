@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { writeRecipe } from "@/lib/db/writeRecipe";
@@ -9,6 +10,13 @@ import { scoreRecipe } from "@/lib/scoring/score";
 import { getRecommendations } from "@/lib/cache/recommend";
 import { createRecipeGenerator } from "@/lib/llm/generator";
 import type { Storage } from "@/lib/types";
+import {
+  ASSUMED_STAPLE_SLUGS,
+  BASIC_STUDENT_EQUIPMENT,
+  POPULAR_INGREDIENT_SLUGS,
+} from "@/lib/kitchen/defaults";
+
+const ONBOARD_COOKIE = "stume_onboarded";
 
 async function getOrCreateKitchen() {
   const existing = await prisma.kitchen.findFirst({
@@ -17,23 +25,38 @@ async function getOrCreateKitchen() {
   });
   if (existing) return existing;
 
-  return prisma.kitchen.create({
+  const kitchen = await prisma.kitchen.create({
     data: {
       name: "My Kitchen",
-      equipment: JSON.stringify([
-        "pan",
-        "hob",
-        "microwave",
-        "toaster",
-        "kettle",
-        "bowl",
-        "oven",
-        "tray",
-        "grill",
-      ]),
+      equipment: JSON.stringify([...BASIC_STUDENT_EQUIPMENT]),
     },
+  });
+  await ensureAssumedStaples(kitchen.id);
+  return prisma.kitchen.findUniqueOrThrow({
+    where: { id: kitchen.id },
     include: { items: { include: { ingredient: true } } },
   });
+}
+
+async function ensureAssumedStaples(kitchenId: string) {
+  const staples = await prisma.ingredient.findMany({
+    where: { slug: { in: [...ASSUMED_STAPLE_SLUGS] } },
+  });
+  for (const ingredient of staples) {
+    await prisma.kitchenItem.upsert({
+      where: {
+        kitchenId_ingredientId: { kitchenId, ingredientId: ingredient.id },
+      },
+      update: { isStaple: true },
+      create: {
+        kitchenId,
+        ingredientId: ingredient.id,
+        storage: ingredient.defaultStorage,
+        isStaple: true,
+        expiringSoon: false,
+      },
+    });
+  }
 }
 
 function parseEquipment(value: string): string[] {
@@ -45,9 +68,16 @@ function parseEquipment(value: string): string[] {
   }
 }
 
+function revalidateKitchenPaths() {
+  revalidatePath("/");
+  revalidatePath("/kitchen");
+  revalidatePath("/onboarding");
+}
+
 export async function getKitchenView() {
   const kitchen = await getOrCreateKitchen();
   const ingredients = await prisma.ingredient.findMany({ orderBy: { name: "asc" } });
+  const ownedSlugs = new Set(kitchen.items.map((item) => item.ingredient.slug));
 
   return {
     kitchen: {
@@ -74,18 +104,38 @@ export async function getKitchenView() {
       defaultStorage: item.defaultStorage as Storage,
       isEssential: item.isEssential,
     })),
+    popularIngredients: ingredients
+      .filter((item) => (POPULAR_INGREDIENT_SLUGS as readonly string[]).includes(item.slug))
+      .filter((item) => !ownedSlugs.has(item.slug))
+      .sort(
+        (a, b) =>
+          (POPULAR_INGREDIENT_SLUGS as readonly string[]).indexOf(a.slug) -
+          (POPULAR_INGREDIENT_SLUGS as readonly string[]).indexOf(b.slug),
+      )
+      .map((item) => ({
+        id: item.id,
+        slug: item.slug,
+        name: item.name,
+      })),
+    assumedStaples: ASSUMED_STAPLE_SLUGS.map((slug) => {
+      const ingredient = ingredients.find((item) => item.slug === slug);
+      const owned = kitchen.items.find((item) => item.ingredient.slug === slug);
+      return {
+        slug,
+        name: ingredient?.name ?? slug,
+        ingredientId: ingredient?.id ?? "",
+        enabled: Boolean(owned),
+      };
+    }),
   };
 }
 
-export async function addKitchenIngredient(formData: FormData) {
-  const kitchen = await getOrCreateKitchen();
-  const ingredientId = String(formData.get("ingredientId") ?? "");
-  const storage = String(formData.get("storage") ?? "cupboard") as Storage;
-  const isStaple = formData.get("isStaple") === "on";
-  const expiringSoon = formData.get("expiringSoon") === "on";
-  const quantity = String(formData.get("quantity") ?? "") || null;
-
+/** One-tap add — no quantity, no form ceremony. */
+export async function quickAddIngredient(ingredientId: string) {
   if (!ingredientId) return;
+  const kitchen = await getOrCreateKitchen();
+  const ingredient = await prisma.ingredient.findUnique({ where: { id: ingredientId } });
+  if (!ingredient) return;
 
   await prisma.kitchenItem.upsert({
     where: {
@@ -94,30 +144,33 @@ export async function addKitchenIngredient(formData: FormData) {
         ingredientId,
       },
     },
-    update: {
-      storage,
-      isStaple,
-      expiringSoon,
-      quantity,
-    },
+    update: {},
     create: {
       kitchenId: kitchen.id,
       ingredientId,
-      storage,
-      isStaple,
-      expiringSoon,
-      quantity,
+      storage: ingredient.defaultStorage,
+      isStaple: (ASSUMED_STAPLE_SLUGS as readonly string[]).includes(ingredient.slug),
+      expiringSoon: false,
     },
   });
 
-  revalidatePath("/");
-  revalidatePath("/kitchen");
+  revalidateKitchenPaths();
+}
+
+export async function quickAddBySlug(slug: string) {
+  const ingredient = await prisma.ingredient.findUnique({ where: { slug } });
+  if (!ingredient) return;
+  await quickAddIngredient(ingredient.id);
+}
+
+export async function addKitchenIngredient(formData: FormData) {
+  const ingredientId = String(formData.get("ingredientId") ?? "");
+  await quickAddIngredient(ingredientId);
 }
 
 export async function removeKitchenIngredient(itemId: string) {
   await prisma.kitchenItem.delete({ where: { id: itemId } });
-  revalidatePath("/");
-  revalidatePath("/kitchen");
+  revalidateKitchenPaths();
 }
 
 export async function toggleExpiring(itemId: string, expiringSoon: boolean) {
@@ -125,15 +178,55 @@ export async function toggleExpiring(itemId: string, expiringSoon: boolean) {
     where: { id: itemId },
     data: { expiringSoon },
   });
-  revalidatePath("/");
-  revalidatePath("/kitchen");
+  revalidateKitchenPaths();
+}
+
+export async function setAssumedStaple(slug: string, enabled: boolean) {
+  if (!(ASSUMED_STAPLE_SLUGS as readonly string[]).includes(slug)) return;
+  const kitchen = await getOrCreateKitchen();
+  const ingredient = await prisma.ingredient.findUnique({ where: { slug } });
+  if (!ingredient) return;
+
+  if (enabled) {
+    await prisma.kitchenItem.upsert({
+      where: {
+        kitchenId_ingredientId: {
+          kitchenId: kitchen.id,
+          ingredientId: ingredient.id,
+        },
+      },
+      update: { isStaple: true },
+      create: {
+        kitchenId: kitchen.id,
+        ingredientId: ingredient.id,
+        storage: ingredient.defaultStorage,
+        isStaple: true,
+        expiringSoon: false,
+      },
+    });
+  } else {
+    await prisma.kitchenItem.deleteMany({
+      where: { kitchenId: kitchen.id, ingredientId: ingredient.id },
+    });
+  }
+  revalidateKitchenPaths();
+}
+
+export async function setKitchenEquipment(equipment: string[]) {
+  const kitchen = await getOrCreateKitchen();
+  const cleaned = equipment.map((item) => item.trim()).filter(Boolean);
+  await prisma.kitchen.update({
+    where: { id: kitchen.id },
+    data: { equipment: JSON.stringify(cleaned) },
+  });
+  revalidateKitchenPaths();
 }
 
 export async function setDemoInventory(slugs: string[]) {
   const kitchen = await getOrCreateKitchen();
   await prisma.kitchenItem.deleteMany({ where: { kitchenId: kitchen.id } });
   const ingredients = await prisma.ingredient.findMany({
-    where: { slug: { in: slugs } },
+    where: { slug: { in: [...new Set([...slugs, ...ASSUMED_STAPLE_SLUGS])] } },
   });
 
   for (const ingredient of ingredients) {
@@ -142,14 +235,85 @@ export async function setDemoInventory(slugs: string[]) {
         kitchenId: kitchen.id,
         ingredientId: ingredient.id,
         storage: ingredient.defaultStorage,
-        isStaple: ["butter", "oil", "salt", "pepper"].includes(ingredient.slug),
+        isStaple: (ASSUMED_STAPLE_SLUGS as readonly string[]).includes(ingredient.slug),
         expiringSoon: ["mushrooms", "spinach", "bread", "milk"].includes(ingredient.slug),
       },
     });
   }
 
-  revalidatePath("/");
-  revalidatePath("/kitchen");
+  const jar = await cookies();
+  jar.set(ONBOARD_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  revalidateKitchenPaths();
+}
+
+export async function completeOnboarding(input: {
+  ingredientIds: string[];
+  equipment: string[];
+}) {
+  const kitchen = await getOrCreateKitchen();
+  await prisma.kitchenItem.deleteMany({ where: { kitchenId: kitchen.id } });
+  await prisma.kitchen.update({
+    where: { id: kitchen.id },
+    data: {
+      name: "My Kitchen",
+      equipment: JSON.stringify(
+        input.equipment.length > 0 ? input.equipment : [...BASIC_STUDENT_EQUIPMENT],
+      ),
+    },
+  });
+
+  const ids = [...new Set(input.ingredientIds.filter(Boolean))];
+  const ingredients = await prisma.ingredient.findMany({
+    where: { id: { in: ids } },
+  });
+  for (const ingredient of ingredients) {
+    await prisma.kitchenItem.create({
+      data: {
+        kitchenId: kitchen.id,
+        ingredientId: ingredient.id,
+        storage: ingredient.defaultStorage,
+        isStaple: false,
+        expiringSoon: false,
+      },
+    });
+  }
+  await ensureAssumedStaples(kitchen.id);
+
+  const jar = await cookies();
+  jar.set(ONBOARD_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  revalidateKitchenPaths();
+}
+
+export async function needsOnboarding(): Promise<boolean> {
+  const jar = await cookies();
+  if (jar.get(ONBOARD_COOKIE)?.value === "1") return false;
+  const kitchen = await prisma.kitchen.findFirst({
+    include: { items: { include: { ingredient: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!kitchen) return true;
+  const nonStaple = kitchen.items.filter(
+    (item) => !(ASSUMED_STAPLE_SLUGS as readonly string[]).includes(item.ingredient.slug),
+  );
+  return nonStaple.length === 0;
+}
+
+export async function getOnboardingOptions() {
+  const ingredients = await prisma.ingredient.findMany({ orderBy: { name: "asc" } });
+  const popular = POPULAR_INGREDIENT_SLUGS.map((slug) => ingredients.find((item) => item.slug === slug))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .map((item) => ({ id: item.id, slug: item.slug, name: item.name }));
+
+  return {
+    popular,
+    allIngredients: ingredients.map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      name: item.name,
+      category: item.category,
+    })),
+    defaultEquipment: [...BASIC_STUDENT_EQUIPMENT],
+  };
 }
 
 export async function getHomeRecommendations() {
@@ -219,18 +383,34 @@ export async function getHomeRecommendations() {
     },
   });
 
+  const visibleItems = kitchenRow.items.filter(
+    (item) => !(ASSUMED_STAPLE_SLUGS as readonly string[]).includes(item.ingredient.slug),
+  );
+
   return {
     kitchenName: kitchenRow.name,
-    inventoryCount: kitchenRow.items.length,
+    inventoryCount: visibleItems.length,
+    inventory: visibleItems.map((item) => ({
+      id: item.id,
+      slug: item.ingredient.slug,
+      name: item.ingredient.name,
+      expiringSoon: item.expiringSoon,
+    })),
     ...result,
-    // Strip non-serializable bits for client if needed — keep plain objects.
     makeNow: result.makeNow.map(serializeCandidate),
     almostThere: result.almostThere.map(serializeCandidate),
     useSoon: result.useSoon.map(serializeCandidate),
   };
 }
 
-function serializeCandidate(candidate: Awaited<ReturnType<typeof getRecommendations>>["makeNow"][number]) {
+function serializeCandidate(
+  candidate: Awaited<ReturnType<typeof getRecommendations>>["makeNow"][number],
+) {
+  const kit = candidate.recipe.equipment.filter(Boolean);
+  const panCount = kit.filter((item) =>
+    ["pan", "pot", "bowl", "tray", "hob"].includes(item),
+  ).length;
+
   return {
     id: candidate.recipe.id,
     title: candidate.recipe.title,
@@ -238,7 +418,19 @@ function serializeCandidate(candidate: Awaited<ReturnType<typeof getRecommendati
     steps: candidate.recipe.steps,
     timeMinutes: candidate.recipe.timeMinutes,
     difficulty: candidate.recipe.difficulty,
+    effort:
+      candidate.recipe.difficulty === "easy"
+        ? "Low effort"
+        : candidate.recipe.difficulty === "medium"
+          ? "Some effort"
+          : "More effort",
     equipment: candidate.recipe.equipment,
+    kitLabel:
+      panCount <= 1
+        ? "1 pan"
+        : panCount === 2
+          ? "2 pots"
+          : kit.slice(0, 2).join(" · ") || "basic kit",
     estimatedCost: candidate.recipe.estimatedCost,
     tags: candidate.recipe.tags,
     score: candidate.score,
@@ -275,9 +467,19 @@ export async function getRecipeDetail(recipeId: string) {
   );
 
   const candidate = scoreRecipe(graph, recipe, kitchen);
+  const ingredients = await prisma.ingredient.findMany({
+    where: { slug: { in: candidate.missingRequired } },
+  });
+  const missingWithIds = candidate.missingRequired.map((slug) => ({
+    slug,
+    name: slug.replaceAll("-", " "),
+    ingredientId: ingredients.find((item) => item.slug === slug)?.id ?? "",
+  }));
+
   return {
     kitchenName: kitchenRow.name,
     inventoryCount: kitchenRow.items.length,
     recipe: serializeCandidate(candidate),
+    missingWithIds,
   };
 }
