@@ -5,6 +5,7 @@ import { INGREDIENTS } from "./seed/ingredients";
 import { TRANSFORMATIONS } from "./seed/transformations";
 import { RECIPES } from "./seed/recipes";
 import { DEFAULT_SCORE_WEIGHTS } from "../src/lib/types";
+import { writeRecipe } from "../src/lib/db/writeRecipe";
 import { buildRecipeSignature } from "../src/lib/validation/signature";
 import { ingestRefinedRecipes } from "../scripts/recipes/lib/ingest";
 import type { RefinedRecipe } from "../scripts/recipes/lib/refine";
@@ -123,51 +124,39 @@ async function main() {
       componentSlugs: recipe.componentSlugs,
     });
 
-    const created = await prisma.recipe.create({
-      data: {
+    const written = await writeRecipe(
+      prisma,
+      {
         title: recipe.title,
         description: recipe.description,
-        steps: JSON.stringify(recipe.steps),
+        steps: recipe.steps,
         timeMinutes: recipe.timeMinutes,
         difficulty: recipe.difficulty,
-        equipment: JSON.stringify(recipe.equipment),
+        equipment: recipe.equipment,
         estimatedCost: recipe.estimatedCost,
-        tags: JSON.stringify(recipe.tags),
-        graphPath: JSON.stringify(recipe.graphPath),
+        tags: recipe.tags,
+        graphPath: recipe.graphPath,
         generationSource: "seed",
         signature,
         popularity: 1,
         useCount: 0,
         noveltyScore: 1,
-      },
-    });
-
-    for (const item of recipe.ingredients) {
-      const ingredientId = ingredientIds.get(item.slug);
-      if (!ingredientId) {
-        throw new Error(`Missing ingredient for recipe ${recipe.title}: ${item.slug}`);
-      }
-      await prisma.recipeIngredient.create({
-        data: {
-          recipeId: created.id,
-          ingredientId,
+        ingredients: recipe.ingredients.map((item) => ({
+          slug: item.slug,
           quantity: item.quantity,
           optional: Boolean(item.optional),
-        },
-      });
-    }
-
-    for (const componentSlug of recipe.componentSlugs) {
-      const componentId = componentIds.get(componentSlug);
-      if (!componentId) {
-        throw new Error(`Missing component for recipe ${recipe.title}: ${componentSlug}`);
-      }
-      await prisma.recipeComponent.create({
-        data: {
-          recipeId: created.id,
-          componentId,
-        },
-      });
+        })),
+        componentSlugs: recipe.componentSlugs,
+      },
+      {
+        ingredientIds,
+        componentIds,
+        onMissingIngredient: "throw",
+        onMissingComponent: "throw",
+      },
+    );
+    if (!written.ok) {
+      throw new Error(`Failed to seed recipe ${recipe.title}`);
     }
   }
 

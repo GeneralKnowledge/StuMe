@@ -37,13 +37,32 @@ function washingUpBurden(equipment: string[]): number {
 function nutritionProxy(recipe: GraphRecipe): number {
   const tags = new Set(recipe.tags);
   let score = 0.4;
-  if (tags.has("vegetarian") || recipe.ingredients.some((i) => ["frozen-peas", "frozen-mixed-vegetables", "spinach", "mushrooms", "onions"].includes(i.ingredientSlug))) {
+  if (
+    tags.has("vegetarian") ||
+    recipe.ingredients.some((i) =>
+      ["frozen-peas", "frozen-mixed-vegetables", "spinach", "mushrooms", "onions"].includes(
+        i.ingredientSlug,
+      ),
+    )
+  ) {
     score += 0.2;
   }
-  if (recipe.ingredients.some((i) => ["eggs", "tuna", "chickpeas", "baked-beans", "cooked-chicken", "cheese"].includes(i.ingredientSlug))) {
+  if (
+    recipe.ingredients.some((i) =>
+      ["eggs", "tuna", "chickpeas", "baked-beans", "cooked-chicken", "cheese"].includes(
+        i.ingredientSlug,
+      ),
+    )
+  ) {
     score += 0.2;
   }
-  if (recipe.ingredients.some((i) => ["rice", "pasta", "bread", "noodles", "instant-noodles", "potatoes", "frozen-chips"].includes(i.ingredientSlug))) {
+  if (
+    recipe.ingredients.some((i) =>
+      ["rice", "pasta", "bread", "noodles", "instant-noodles", "potatoes", "frozen-chips"].includes(
+        i.ingredientSlug,
+      ),
+    )
+  ) {
     score += 0.15;
   }
   return Math.min(score, 1);
@@ -54,14 +73,20 @@ export function scoreRecipe(
   recipe: GraphRecipe,
   kitchen: KitchenState,
   weights: ScoreWeights = DEFAULT_SCORE_WEIGHTS,
-  options?: { seenSignatures?: Set<string> },
+  options?: {
+    seenSignatures?: Set<string>;
+    /** Kitchen-constant derived components — hoist once in rankRecipes. */
+    derivedSlugs?: Set<string>;
+  },
 ): RecipeCandidate {
   const coverage = recipeIngredientCoverage(recipe, kitchen);
-  const derived = deriveAvailableComponents(graph, kitchen);
-  const derivedSlugs = new Set(derived.map((item) => item.componentSlug));
+  const derivedSlugs =
+    options?.derivedSlugs ??
+    new Set(deriveAvailableComponents(graph, kitchen).map((item) => item.componentSlug));
   const usedDerived = recipe.componentSlugs.filter((slug) => derivedSlugs.has(slug));
 
-  const timeScore = recipe.timeMinutes <= 10 ? 1 : recipe.timeMinutes <= 15 ? 0.8 : recipe.timeMinutes <= 25 ? 0.5 : 0.25;
+  const timeScore =
+    recipe.timeMinutes <= 10 ? 1 : recipe.timeMinutes <= 15 ? 0.8 : recipe.timeMinutes <= 25 ? 0.5 : 0.25;
   const equipmentScore =
     kitchen.equipment.size === 0
       ? 1
@@ -69,7 +94,9 @@ export function scoreRecipe(
         ? 1
         : 0.35;
 
-  const usesExpiring = recipe.ingredients.some((item) => kitchen.expiringSlugs.has(item.ingredientSlug));
+  const usesExpiring = recipe.ingredients.some((item) =>
+    kitchen.expiringSlugs.has(item.ingredientSlug),
+  );
   const foodWasteScore = usesExpiring ? 1 : 0.35;
 
   const varietyScore =
@@ -93,9 +120,11 @@ export function scoreRecipe(
   const score = Object.values(breakdown).reduce((sum, value) => sum + value, 0);
   const canMakeNow = coverage.missingRequired.length === 0 && coverage.availabilityPct >= 0.999;
   const almostThere =
-    !canMakeNow &&
-    coverage.missingRequired.length === 1 &&
-    coverage.availabilityPct >= 0.5;
+    !canMakeNow && coverage.missingRequired.length === 1 && coverage.availabilityPct >= 0.5;
+
+  if (options?.seenSignatures) {
+    options.seenSignatures.add(recipe.signature);
+  }
 
   return {
     recipe,
@@ -118,9 +147,18 @@ export function rankRecipes(
   kitchen: KitchenState,
   weights: ScoreWeights = DEFAULT_SCORE_WEIGHTS,
 ): RecipeCandidate[] {
+  // Kitchen-constant: derive once for the whole ranking pass.
+  const derivedSlugs = new Set(
+    deriveAvailableComponents(graph, kitchen).map((item) => item.componentSlug),
+  );
   const seen = new Set<string>();
   const ranked = graph.recipes
-    .map((recipe) => scoreRecipe(graph, recipe, kitchen, weights, { seenSignatures: seen }))
+    .map((recipe) =>
+      scoreRecipe(graph, recipe, kitchen, weights, {
+        seenSignatures: seen,
+        derivedSlugs,
+      }),
+    )
     .sort((a, b) => {
       if (a.canMakeNow !== b.canMakeNow) return a.canMakeNow ? -1 : 1;
       if (a.usesExpiring !== b.usesExpiring) return a.usesExpiring ? -1 : 1;
@@ -132,12 +170,18 @@ export function rankRecipes(
   const diversified: RecipeCandidate[] = [];
   for (const candidate of ranked) {
     const key = candidate.recipe.signature.split("|").slice(0, 3).join("|");
-    if (emitted.has(key) && candidate.canMakeNow && diversified.filter((c) => c.canMakeNow).length >= 4) {
+    if (
+      emitted.has(key) &&
+      candidate.canMakeNow &&
+      diversified.filter((c) => c.canMakeNow).length >= 4
+    ) {
       diversified.push({ ...candidate, score: candidate.score * 0.92 });
     } else {
       emitted.add(key);
       diversified.push(candidate);
     }
   }
-  return diversified.sort((a, b) => b.score - a.score || Number(b.canMakeNow) - Number(a.canMakeNow));
+  return diversified.sort(
+    (a, b) => b.score - a.score || Number(b.canMakeNow) - Number(a.canMakeNow),
+  );
 }
