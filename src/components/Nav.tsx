@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Nav({ compact = false }: { compact?: boolean }) {
   return (
@@ -6,13 +7,16 @@ export function Nav({ compact = false }: { compact?: boolean }) {
       <Link href="/" className="brand brand-nav">
         StuMe
       </Link>
-      <div className="nav-links nav-links-desktop">
-        <Link className="pill-link" href="/">
-          Cook
-        </Link>
-        <Link className="pill-link" href="/kitchen">
-          Kitchen
-        </Link>
+      <div className="nav-end">
+        <ThemeToggle />
+        <div className="nav-links nav-links-desktop">
+          <Link className="pill-link" href="/">
+            Cook
+          </Link>
+          <Link className="pill-link" href="/kitchen">
+            Kitchen
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -29,12 +29,17 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#10231f",
+  themeColor: "#e6e0d4",
 };
+
+const themeBoot = `(function(){try{var t=localStorage.getItem('stume-theme');if(t!=='night'&&t!=='linen')t='linen';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='linen';}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${syne.variable} ${figtree.variable} h-full`}>
+    <html lang="en" className={`${syne.variable} ${figtree.variable} h-full`} data-theme="linen">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+      </head>
       <body className="min-h-full">{children}</body>
     </html>
   );
