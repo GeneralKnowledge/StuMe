@@ -499,7 +499,12 @@ function shuffleInPlace<T>(items: T[]): T[] {
 }
 
 /** Random recipes from the corpus — ignores kitchen inventory. */
-export async function getRandomRecipes(count = 5): Promise<SerializedCandidate[]> {
+export async function getRandomRecipes(
+  count = 5,
+  /** Client nonce so each shuffle is a distinct server-action call. */
+  _nonce = 0,
+): Promise<SerializedCandidate[]> {
+  void _nonce;
   const limit = Math.max(1, Math.min(Math.floor(count) || 5, 12));
   const graph = await loadFoodGraph();
   if (graph.recipes.length === 0) return [];

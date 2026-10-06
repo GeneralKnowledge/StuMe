@@ -14,13 +14,15 @@ export function SurpriseMe({
 }) {
   const [recipes, setRecipes] = useState(initial);
   const [pending, setPending] = useState(false);
+  const [generation, setGeneration] = useState(0);
 
   async function shuffle() {
     if (pending) return;
     setPending(true);
     try {
-      const next = await getRandomRecipes(5);
+      const next = await getRandomRecipes(5, Date.now());
       setRecipes(next);
+      setGeneration((value) => value + 1);
     } finally {
       setPending(false);
     }
@@ -47,7 +49,7 @@ export function SurpriseMe({
       <p className="section-sub">
         Random ideas — ignores what&apos;s in your kitchen.
       </p>
-      <div className="recipe-list">
+      <div className="recipe-list" key={generation}>
         {recipes.map((recipe) => (
           <RecipeCard key={recipe.id} recipe={recipe} mode="browse" />
         ))}
