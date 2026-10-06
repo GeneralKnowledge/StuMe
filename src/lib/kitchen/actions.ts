@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { writeRecipe } from "@/lib/db/writeRecipe";
 import { loadFoodGraph } from "@/lib/graph/load";
 import { createKitchenState } from "@/lib/graph/engine";
 import { scoreRecipe } from "@/lib/scoring/score";
@@ -184,52 +185,35 @@ export async function getHomeRecommendations() {
       },
       saveRecipes: async (recipes) => {
         for (const recipe of recipes) {
-          const created = await prisma.recipe.create({
-            data: {
+          await writeRecipe(
+            prisma,
+            {
               title: recipe.title,
               description: recipe.description,
-              steps: JSON.stringify(recipe.steps),
+              steps: recipe.steps,
               timeMinutes: recipe.timeMinutes,
               difficulty: recipe.difficulty,
-              equipment: JSON.stringify(recipe.equipment),
+              equipment: recipe.equipment,
               estimatedCost: recipe.estimatedCost,
-              tags: JSON.stringify(recipe.tags),
-              graphPath: JSON.stringify(recipe.graphPath),
+              tags: recipe.tags,
+              graphPath: recipe.graphPath,
               generationSource: recipe.generationSource,
               signature: recipe.signature,
               popularity: 0,
               useCount: 0,
               noveltyScore: recipe.noveltyScore,
-            },
-          });
-
-          for (const item of recipe.ingredients) {
-            const ingredient = await prisma.ingredient.findUnique({
-              where: { slug: item.ingredientSlug },
-            });
-            if (!ingredient) continue;
-            await prisma.recipeIngredient.create({
-              data: {
-                recipeId: created.id,
-                ingredientId: ingredient.id,
+              ingredients: recipe.ingredients.map((item) => ({
+                slug: item.ingredientSlug,
                 quantity: item.quantity,
                 optional: item.optional,
-              },
-            });
-          }
-
-          for (const componentSlug of recipe.componentSlugs) {
-            const component = await prisma.component.findUnique({
-              where: { slug: componentSlug },
-            });
-            if (!component) continue;
-            await prisma.recipeComponent.create({
-              data: {
-                recipeId: created.id,
-                componentId: component.id,
-              },
-            });
-          }
+              })),
+              componentSlugs: recipe.componentSlugs,
+            },
+            {
+              onMissingIngredient: "omit_ingredients",
+              onMissingComponent: "omit",
+            },
+          );
         }
       },
     },

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { loadRecipeWriteMaps, writeRecipe } from "@/lib/db/writeRecipe";
 import type { RefinedRecipe } from "./refine";
 
 export interface IngestResult {
@@ -16,10 +17,7 @@ export async function ingestRefinedRecipes(
   prisma: PrismaClient,
   recipes: RefinedRecipe[],
 ): Promise<IngestResult> {
-  const ingredientRows = await prisma.ingredient.findMany({ select: { id: true, slug: true } });
-  const ingredientIds = new Map(ingredientRows.map((row) => [row.slug, row.id]));
-  const componentRows = await prisma.component.findMany({ select: { id: true, slug: true } });
-  const componentIds = new Map(componentRows.map((row) => [row.slug, row.id]));
+  const { ingredientIds, componentIds } = await loadRecipeWriteMaps(prisma);
 
   const existing = await prisma.recipe.findMany({ select: { signature: true } });
   const signatures = new Set(existing.map((row) => row.signature));
@@ -34,50 +32,40 @@ export async function ingestRefinedRecipes(
       continue;
     }
 
-    const missing = recipe.ingredients.filter((item) => !ingredientIds.has(item.slug));
-    if (missing.length > 0) {
-      skippedMissingIngredient += 1;
-      continue;
-    }
-
-    const created = await prisma.recipe.create({
-      data: {
+    const result = await writeRecipe(
+      prisma,
+      {
         title: recipe.title,
         description: recipe.description,
-        steps: JSON.stringify(recipe.steps),
+        steps: recipe.steps,
         timeMinutes: recipe.timeMinutes,
         difficulty: recipe.difficulty,
-        equipment: JSON.stringify(recipe.equipment),
+        equipment: recipe.equipment,
         estimatedCost: recipe.estimatedCost,
-        tags: JSON.stringify(recipe.tags),
-        graphPath: JSON.stringify(recipe.graphPath),
+        tags: recipe.tags,
+        graphPath: recipe.graphPath,
         generationSource: "corpus",
         signature: recipe.signature,
         popularity: 0,
         useCount: 0,
         noveltyScore: 1,
-      },
-    });
-
-    for (const item of recipe.ingredients) {
-      await prisma.recipeIngredient.create({
-        data: {
-          recipeId: created.id,
-          ingredientId: ingredientIds.get(item.slug)!,
+        ingredients: recipe.ingredients.map((item) => ({
+          slug: item.slug,
           optional: Boolean(item.optional),
-        },
-      });
-    }
+        })),
+        componentSlugs: recipe.componentSlugs,
+      },
+      {
+        ingredientIds,
+        componentIds,
+        onMissingIngredient: "skip_recipe",
+        onMissingComponent: "omit",
+      },
+    );
 
-    for (const componentSlug of recipe.componentSlugs) {
-      const componentId = componentIds.get(componentSlug);
-      if (!componentId) continue;
-      await prisma.recipeComponent.create({
-        data: {
-          recipeId: created.id,
-          componentId,
-        },
-      });
+    if (!result.ok) {
+      skippedMissingIngredient += 1;
+      continue;
     }
 
     signatures.add(recipe.signature);
