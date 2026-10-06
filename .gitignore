@@ -54,6 +54,8 @@ data/generated/**
 !data/generated/student-candidates/valid-5k/**
 !data/generated/student-candidates/refined/
 !data/generated/student-candidates/refined/**
+!data/generated/student-candidates/demo/
+!data/generated/student-candidates/demo/**
 
 # vercel
 .vercel

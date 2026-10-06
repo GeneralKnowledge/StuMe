@@ -1,9 +1,9 @@
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
+import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import { INGREDIENTS } from "./seed/ingredients";
 import { TRANSFORMATIONS } from "./seed/transformations";
 import { RECIPES } from "./seed/recipes";
+import { corpusLabel, resolveCorpusCandidatesPath } from "../src/lib/corpus/path";
 import { DEFAULT_SCORE_WEIGHTS } from "../src/lib/types";
 import { writeRecipe } from "../src/lib/db/writeRecipe";
 import { buildRecipeSignature } from "../src/lib/validation/signature";
@@ -11,15 +11,6 @@ import { ingestRefinedRecipes } from "../scripts/recipes/lib/ingest";
 import type { RefinedRecipe } from "../scripts/recipes/lib/refine";
 
 const prisma = new PrismaClient();
-
-const REFINED_CORPUS_PATH = path.join(
-  process.cwd(),
-  "data",
-  "generated",
-  "student-candidates",
-  "refined",
-  "candidates.json",
-);
 
 async function main() {
   console.log("Seeding StuMe food graph...");
@@ -161,13 +152,16 @@ async function main() {
   }
 
   let corpusInserted = 0;
-  if (existsSync(REFINED_CORPUS_PATH)) {
-    const refined = JSON.parse(readFileSync(REFINED_CORPUS_PATH, "utf8")) as RefinedRecipe[];
+  const corpusPath = resolveCorpusCandidatesPath();
+  if (corpusPath) {
+    const refined = JSON.parse(readFileSync(corpusPath, "utf8")) as RefinedRecipe[];
     const ingest = await ingestRefinedRecipes(prisma, refined);
     corpusInserted = ingest.inserted;
     console.log(
-      `Ingested refined corpus: ${ingest.inserted} inserted, ${ingest.skippedDuplicate} signature skips.`,
+      `Ingested ${corpusLabel(corpusPath)} corpus (${refined.length} files): ${ingest.inserted} inserted, ${ingest.skippedDuplicate} signature skips.`,
     );
+  } else {
+    console.log("No corpus candidates found (STUME_CORPUS=none or missing files); seed recipes only.");
   }
 
   const kitchen = await prisma.kitchen.create({

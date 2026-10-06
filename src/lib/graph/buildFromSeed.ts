@@ -1,20 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
+import { readFileSync } from "node:fs";
 import { INGREDIENTS } from "../../../prisma/seed/ingredients";
 import { TRANSFORMATIONS } from "../../../prisma/seed/transformations";
 import { RECIPES } from "../../../prisma/seed/recipes";
+import { resolveCorpusCandidatesPath } from "@/lib/corpus/path";
 import type { FoodGraph } from "@/lib/graph/engine";
 import type { GraphComponent, GraphIngredient, GraphRecipe } from "@/lib/types";
 import { buildRecipeSignature } from "@/lib/validation/signature";
-
-const REFINED_CORPUS_PATH = path.join(
-  process.cwd(),
-  "data",
-  "generated",
-  "student-candidates",
-  "refined",
-  "candidates.json",
-);
 
 interface RefinedCorpusRecipe {
   title: string;
@@ -123,8 +114,9 @@ export function buildGraphFromSeed(options?: { includeCorpus?: boolean }): FoodG
 
   const signatures = new Set(recipes.map((recipe) => recipe.signature));
 
-  if (includeCorpus && existsSync(REFINED_CORPUS_PATH)) {
-    const corpus = JSON.parse(readFileSync(REFINED_CORPUS_PATH, "utf8")) as RefinedCorpusRecipe[];
+  const corpusPath = includeCorpus ? resolveCorpusCandidatesPath() : null;
+  if (corpusPath) {
+    const corpus = JSON.parse(readFileSync(corpusPath, "utf8")) as RefinedCorpusRecipe[];
     let corpusIndex = 0;
     for (const item of corpus) {
       const ingredientsList = item.ingredients
