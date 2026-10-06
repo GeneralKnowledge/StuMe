@@ -25,19 +25,17 @@ export default async function HomePage() {
       <header className="page-header">
         <div className="page-header-row">
           <h1>What can I make?</h1>
-          {makeNow.length > 0 && <span className="section-count">{makeNow.length}</span>}
+          <p className="page-header-meta">
+            {data.inventoryCount} in {data.kitchenName}
+          </p>
         </div>
-        <p className="page-header-meta">
-          {data.inventoryCount} in {data.kitchenName}
-          <span className="meta-dot">·</span>
-          {data.usedGenerator ? `generated ${data.generatedCount}` : "recipe cache"}
-        </p>
         <DemoButtons />
       </header>
 
       <section className="section section-primary">
         <div className="section-head">
           <h2>Make now</h2>
+          {makeNow.length > 0 && <span className="section-count">{makeNow.length}</span>}
         </div>
         <div className="recipe-list">
           {makeNowPreview.length === 0 ? (
