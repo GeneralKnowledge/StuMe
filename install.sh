@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # StuMe VPS install — Node app + SQLite + optional demo seed.
 # Usage:
-#   ./install.sh              # install deps, db, seed demo, build
+#   ./install.sh              # install deps (incl. build tools), db, seed demo, build
 #   ./install.sh --no-seed    # skip seeding
 #   PORT=8080 ./install.sh    # remember PORT for how you start the app
+#   PRUNE_DEV=1 ./install.sh  # after build, drop devDependencies
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
