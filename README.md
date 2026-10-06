@@ -114,9 +114,11 @@ App: [http://localhost:3000](http://localhost:3000)
 | Command | Purpose |
 |---|---|
 | `npm run setup` | Push schema + seed graph/recipes/demo kitchen |
+| `npm run demo:ready` | Curate demo corpus, seed DB, validate recommendations |
 | `npm run demo` | Run recommendation engine on representative inventories |
 | `npm test` | Automated graph/scoring/cache/e2e tests |
-| `npm run db:seed` | Re-seed database |
+| `npm run db:seed` | Re-seed database (`STUME_CORPUS=demo\|refined`) |
+| `npm run recipes:curate-demo` | Build the small demo corpus from refined |
 | `npm run dev` | Next.js dev server |
 
 ## How to add ingredients
@@ -169,6 +171,17 @@ LLM_PROVIDER=heuristic
 The generator must return structured JSON drafts. It never writes directly to the database. Validation always runs first.
 
 ## Demo / test inventories
+
+For a solid local demo (curated ~120 corpus recipes + Demo Kitchen seed):
+
+```bash
+npm run demo:ready
+npm run dev
+```
+
+`STUME_CORPUS` selects the candidates file (`demo` preferred when present, else `refined`). Use `STUME_CORPUS=refined` to load the full ~9k snapshot.
+
+CLI validation across representative inventories:
 
 ```bash
 npm run demo

@@ -19,6 +19,7 @@ data/
     student-candidates/
       valid-5k/           # earlier synthetic dry-run snapshot (committed)
       refined/            # promoted ReciFine subset for DB ingest (committed)
+      demo/               # curated ~120-recipe demo subset (committed)
 ```
 
 ## Obtaining a recipe corpus (alternatives)

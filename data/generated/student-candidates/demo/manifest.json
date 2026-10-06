@@ -1,0 +1,27 @@
+{
+  "count": 120,
+  "source": "data/generated/student-candidates/refined/candidates.json",
+  "filter": "score≥55, struggle≤2, ≤6 required ingredients, real cooking steps, diversified families",
+  "target": 120,
+  "poolSize": 1245,
+  "demoKitchenMakeNow": 13,
+  "scoreRange": {
+    "min": 55,
+    "max": 78
+  },
+  "byStruggle": {
+    "1": 26,
+    "2": 94
+  },
+  "demoKitchenSlugs": [
+    "rice",
+    "eggs",
+    "mushrooms",
+    "onions",
+    "butter",
+    "cheese",
+    "oil",
+    "salt",
+    "pepper"
+  ]
+}
