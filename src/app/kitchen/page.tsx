@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/BottomNav";
+import { DemoButtons } from "@/components/DemoButtons";
 import { Nav } from "@/components/Nav";
 import { KitchenClient } from "@/components/KitchenClient";
 import { getKitchenView } from "@/lib/kitchen/actions";
@@ -16,9 +17,9 @@ export default async function KitchenPage() {
           <h1>Kitchen</h1>
           <span className="section-count soft">{kitchen.items.length}</span>
         </div>
-        <p className="page-header-meta">Tap what you have — quantities optional</p>
       </header>
       <KitchenClient items={kitchen.items} allIngredients={allIngredients} />
+      <DemoButtons />
       <BottomNav />
     </main>
   );
