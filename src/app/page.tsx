@@ -22,36 +22,22 @@ export default async function HomePage() {
   return (
     <main className="app-shell app-shell-nav">
       <Nav />
-      <section className="hero hero-home">
-        <h1>
-          StuMe
-          <br />
-          <span>what can I make?</span>
-        </h1>
-        <p>Cheap, quick meals from what you already have.</p>
-        <div className="hero-status">
-          <span>
-            {data.inventoryCount} in {data.kitchenName}
-          </span>
-          <span className="meta-dot">·</span>
-          <span>
-            {data.usedGenerator
-              ? `generated ${data.generatedCount}`
-              : "from your recipe cache"}
-          </span>
+      <header className="page-header">
+        <div className="page-header-row">
+          <h1>What can I make?</h1>
+          {makeNow.length > 0 && <span className="section-count">{makeNow.length}</span>}
         </div>
+        <p className="page-header-meta">
+          {data.inventoryCount} in {data.kitchenName}
+          <span className="meta-dot">·</span>
+          {data.usedGenerator ? `generated ${data.generatedCount}` : "recipe cache"}
+        </p>
         <DemoButtons />
-      </section>
+      </header>
 
       <section className="section section-primary">
         <div className="section-head">
-          <div>
-            <h2>Make now</h2>
-            <p>Ready with what you own.</p>
-          </div>
-          {makeNow.length > 0 && (
-            <span className="section-count">{makeNow.length}</span>
-          )}
+          <h2>Make now</h2>
         </div>
         <div className="recipe-list">
           {makeNowPreview.length === 0 ? (
@@ -73,10 +59,7 @@ export default async function HomePage() {
       {soonPreview.length > 0 && (
         <section className="section">
           <div className="section-head">
-            <div>
-              <h2>Use this soon</h2>
-              <p>Expiring bits first.</p>
-            </div>
+            <h2>Use this soon</h2>
           </div>
           <div className="recipe-list">
             {soonPreview.map((recipe) => (
@@ -88,10 +71,7 @@ export default async function HomePage() {
 
       <section className="section">
         <div className="section-head">
-          <div>
-            <h2>Almost there</h2>
-            <p>One cheap extra away.</p>
-          </div>
+          <h2>Almost there</h2>
         </div>
         <div className="recipe-list">
           {almostPreview.length === 0 ? (
@@ -106,10 +86,7 @@ export default async function HomePage() {
 
       <section className="section section-shop">
         <div className="section-head">
-          <div>
-            <h2>Smart buys</h2>
-            <p>Unlock more meals without filling the fridge.</p>
-          </div>
+          <h2>Smart buys</h2>
         </div>
 
         {superFoods.length > 0 && (

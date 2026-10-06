@@ -11,14 +11,13 @@ export default async function KitchenPage() {
   return (
     <main className="app-shell app-shell-nav">
       <Nav />
-      <section className="hero hero-kitchen">
-        <h1>
-          My
-          <br />
-          <span>kitchen</span>
-        </h1>
-        <p>Tap what you have. Exact quantities optional.</p>
-      </section>
+      <header className="page-header">
+        <div className="page-header-row">
+          <h1>Kitchen</h1>
+          <span className="section-count soft">{kitchen.items.length}</span>
+        </div>
+        <p className="page-header-meta">Tap what you have — quantities optional</p>
+      </header>
       <KitchenClient items={kitchen.items} allIngredients={allIngredients} />
       <BottomNav />
     </main>

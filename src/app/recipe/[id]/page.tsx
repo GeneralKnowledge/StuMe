@@ -25,30 +25,34 @@ export default async function RecipeDetailPage({
   return (
     <main className="app-shell app-shell-nav">
       <Nav compact />
-      <Link href="/" className="back-link">
-        Back to cook
-      </Link>
 
       <article className="recipe-detail">
-        <header className="recipe-detail-hero">
-          <p className="eyebrow">
-            {mode === "now" ? "Ready now" : mode === "almost" ? "Almost there" : "Worth a look"}
-          </p>
-          <h1>{recipe.title}</h1>
-          <p className="recipe-detail-lead">{recipe.description}</p>
+        <header className="page-header recipe-detail-header">
+          <Link href="/" className="back-link">
+            Back to cook
+          </Link>
+          <div className="page-header-row">
+            <h1>{recipe.title}</h1>
+          </div>
           <div className="meta">
+            <span className="chip">
+              {mode === "now" ? "Ready" : mode === "almost" ? "Almost" : "Look"}
+            </span>
             <span>{recipe.timeMinutes} min</span>
             <span className="meta-dot">·</span>
             <span style={{ textTransform: "capitalize" }}>{recipe.difficulty}</span>
             <span className="meta-dot">·</span>
             <span style={{ textTransform: "capitalize" }}>{costLabel(recipe.estimatedCost)}</span>
-            {recipe.usesExpiring && <span className="chip danger">Uses expiring bits</span>}
+            {recipe.usesExpiring && <span className="chip danger">Expiring</span>}
             {mode === "almost" && recipe.missingRequired[0] && (
               <span className="chip warn">
                 Needs {recipe.missingRequired[0].replaceAll("-", " ")}
               </span>
             )}
           </div>
+          {recipe.description && (
+            <p className="page-header-meta recipe-detail-lead">{recipe.description}</p>
+          )}
         </header>
 
         <section className="detail-block">
